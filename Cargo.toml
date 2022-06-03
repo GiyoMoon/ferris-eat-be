@@ -1,9 +1,20 @@
 [package]
 name = "ferris_eat"
 version = "0.1.0"
+authors = ["GiyoMoon <giyomoon@gmail.com>"]
 edition = "2021"
+publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[workspace]
+members = [".", "entity", "migration"]
+
+[dependencies.entity]
+path = "entity"
+
+[dependencies.migration]
+path = "migration"
 
 [dependencies.serde]
 version = "1.0"
