@@ -9,7 +9,12 @@ pub async fn register(
     extract::Json(payload): extract::Json<user::Model>,
     Extension(ref connection): Extension<DatabaseConnection>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
-    let user_id: Uuid = Uuid::new_v4();
+    if payload.username.len() < 4 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Username has to be 4 or more chars long",
+        ));
+    }
 
     let existing_user = user::Entity::find()
         .filter(user::Column::Username.eq(payload.username.to_lowercase()))
@@ -17,22 +22,14 @@ pub async fn register(
         .await;
     let existing_user = match existing_user {
         Ok(result) => result,
-        Err(_) => {
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed creating user".to_string(),
-            ))
-        }
+        Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed creating user")),
     };
     match existing_user {
         None => {}
-        Some(_) => {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                "Username already exists".to_string(),
-            ))
-        }
+        Some(_) => return Err((StatusCode::BAD_REQUEST, "Username already exists")),
     }
+
+    let user_id: Uuid = Uuid::new_v4();
 
     let insert_result = user::ActiveModel {
         id: Set(user_id),
@@ -42,9 +39,6 @@ pub async fn register(
     .await;
     match insert_result {
         Ok(result) => Ok((StatusCode::CREATED, Json(LoginUser::from(result)))),
-        Err(_) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed creating user".to_string(),
-        )),
+        Err(_) => Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed creating user")),
     }
 }
