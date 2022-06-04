@@ -9,7 +9,9 @@ use crate::routes::routes;
 pub async fn init() {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL env var not found");
 
-    let connection = sea_orm::Database::connect(&database_url).await.expect("Database connection failed");
+    let connection = sea_orm::Database::connect(&database_url)
+        .await
+        .expect("Database connection failed");
     Migrator::up(&connection, None).await.unwrap();
 
     let bind_address: SocketAddr = env::var("BIND_ADDRESS")
