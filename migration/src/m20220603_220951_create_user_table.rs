@@ -1,4 +1,4 @@
-use entity::entities::user::*;
+use entity::entities::user::{Column, Entity};
 use sea_orm_migration::prelude::*;
 
 pub struct Migration;
@@ -23,6 +23,26 @@ impl MigrationTrait for Migration {
                             .string()
                             .not_null()
                             .unique_key(),
+                    )
+                    .col(ColumnDef::new(Column::Alias).string().not_null())
+                    .col(
+                        ColumnDef::new(Column::Email)
+                            .string()
+                            .not_null()
+                            .unique_key(),
+                    )
+                    .col(ColumnDef::new(Column::Password).string().not_null())
+                    .col(
+                        ColumnDef::new(Column::CreatedAt)
+                            .timestamp()
+                            // .default("CURRENT_TIMESTAMP")
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Column::UpdatedAt)
+                            .timestamp()
+                            // .default("CURRENT_TIMESTAMP")
+                            .not_null(),
                     )
                     .to_owned(),
             )

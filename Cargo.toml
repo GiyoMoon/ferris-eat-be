@@ -18,7 +18,7 @@ path = "migration"
 
 [dependencies.sea-orm]
 version = "0.8.0"
-features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-uuid"]
+features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"]
 
 [dependencies.dotenv]
 version = "0.15.0"
@@ -36,8 +36,8 @@ version = "0.2.2"
 [dependencies.validator]
 version = "0.15"
 
-# [dependencies.chrono]
-# version = "0.4.19"
+[dependencies.chrono]
+version = "0.4.19"
 # features = ["serde"]
 
 # [dependencies.bcrypt]

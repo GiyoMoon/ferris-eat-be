@@ -2,5 +2,8 @@
 
 pub mod prelude;
 
+pub mod ingredient;
+pub mod recipe;
 pub mod seaql_migrations;
+pub mod unit;
 pub mod user;
