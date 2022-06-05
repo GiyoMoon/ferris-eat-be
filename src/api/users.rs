@@ -3,18 +3,17 @@ use entity::{entities::user, structs::user::LoginUser};
 use sea_orm::{
     prelude::Uuid, ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
 };
+use validator::Validate;
 
 #[axum_macros::debug_handler]
 pub async fn register(
     extract::Json(payload): extract::Json<user::Model>,
     Extension(ref connection): Extension<DatabaseConnection>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
-    if payload.username.len() < 4 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "Username has to be 4 or more chars long",
-        ));
-    }
+    match payload.validate() {
+        Ok(_) => (),
+        Err(e) => return Err((StatusCode::BAD_REQUEST, e.to_string())),
+    };
 
     let existing_user = user::Entity::find()
         .filter(user::Column::Username.eq(payload.username.to_lowercase()))
@@ -22,11 +21,21 @@ pub async fn register(
         .await;
     let existing_user = match existing_user {
         Ok(result) => result,
-        Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed creating user")),
+        Err(_) => {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed creating user".to_string(),
+            ))
+        }
     };
     match existing_user {
-        None => {}
-        Some(_) => return Err((StatusCode::BAD_REQUEST, "Username already exists")),
+        None => (),
+        Some(_) => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "Username already exists".to_string(),
+            ))
+        }
     }
 
     let user_id: Uuid = Uuid::new_v4();
@@ -39,6 +48,9 @@ pub async fn register(
     .await;
     match insert_result {
         Ok(result) => Ok((StatusCode::CREATED, Json(LoginUser::from(result)))),
-        Err(_) => Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed creating user")),
+        Err(_) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed creating user".to_string(),
+        )),
     }
 }
