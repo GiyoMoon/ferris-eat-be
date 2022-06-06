@@ -31,13 +31,13 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(Column::CreatedAt)
                             .timestamp()
-                            // .default("CURRENT_TIMESTAMP")
+                            .extra("DEFAULT CURRENT_TIMESTAMP".to_string())
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Column::UpdatedAt)
                             .timestamp()
-                            // .default("CURRENT_TIMESTAMP")
+                            .extra("DEFAULT CURRENT_TIMESTAMP".to_string())
                             .not_null(),
                     )
                     .to_owned(),

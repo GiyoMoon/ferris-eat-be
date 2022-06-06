@@ -1,5 +1,4 @@
 use axum::{extract, http::StatusCode, response::IntoResponse, Extension, Json};
-use chrono::Utc;
 use entity::{
     entities::user,
     structs::user::{LoginUser, Password},
@@ -73,16 +72,13 @@ pub async fn register(
         }
     };
 
-    let now = Utc::now().naive_utc();
-
     let insert_result = user::ActiveModel {
         id: Set(user_id),
         username: Set(payload.username.to_lowercase()),
         alias: Set(payload.alias),
         email: Set(payload.email.to_lowercase()),
         password: Set(hashed_password.get().to_string()),
-        created_at: Set(now),
-        updated_at: Set(now),
+        ..Default::default()
     }
     .insert(connection)
     .await;
