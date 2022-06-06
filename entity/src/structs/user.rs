@@ -10,15 +10,19 @@ pub struct LoginUser {
     pub username: String,
     pub alias: String,
     pub email: String,
+    pub token: String,
+    pub refresh_token: String,
 }
 
-impl From<Model> for LoginUser {
-    fn from(a: Model) -> Self {
+impl LoginUser {
+    pub fn new(a: Model, token: String, refresh_token: String) -> Self {
         LoginUser {
             id: a.id,
             username: a.username,
             alias: a.alias,
             email: a.email,
+            token,
+            refresh_token,
         }
     }
 }

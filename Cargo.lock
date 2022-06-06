@@ -596,10 +596,13 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "axum-macros",
+ "chrono",
  "dotenv",
  "entity",
+ "jsonwebtoken",
  "migration",
  "sea-orm",
+ "serde",
  "tokio",
  "validator",
 ]
@@ -967,6 +970,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "671a26f820db17c2a2750743f1dd03bafd15b98c9f30c7c2628c024c05d73397"
 dependencies = [
  "wasm-bindgen",
+]
+
+[[package]]
+name = "jsonwebtoken"
+version = "8.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc9051c17f81bae79440afa041b3a278e1de71bfb96d32454b477fd4703ccb6f"
+dependencies = [
+ "base64",
+ "ring",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
