@@ -17,24 +17,25 @@ path = "entity"
 path = "migration"
 
 [dependencies.sea-orm]
-version = "0.8.0"
+version = "^0"
+default-features = false
 features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"]
 
 [dependencies.dotenv]
-version = "0.15.0"
+version = "^0"
 
 [dependencies.tokio]
-version = "1.19.1"
+version = "^1"
 features = ["macros", "rt-multi-thread"]
 
 [dependencies.axum]
-version = "0.5.6"
+version = "^0"
 
 [dependencies.axum-macros]
-version = "0.2.2"
+version = "^0"
 
 [dependencies.validator]
-version = "0.15.0"
+version = "^0"
 
 # [dependencies.chrono]
 # version = "0.4.19"

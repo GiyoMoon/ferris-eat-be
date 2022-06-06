@@ -12,9 +12,9 @@ path = "src/lib.rs"
 path = "../entity"
 
 [dependencies.sea-orm-migration]
-version = "^0.8.0"
+version = "^0"
 features = ["sqlx-postgres", "runtime-tokio-rustls"]
 
 [dependencies.tokio]
-version = "1.19.1"
+version = "^1"
 features = ["macros", "rt"]
