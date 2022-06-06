@@ -30,6 +30,7 @@ features = ["macros", "rt-multi-thread"]
 
 [dependencies.axum]
 version = "^0"
+features = ["headers"]
 
 [dependencies.axum-macros]
 version = "^0"
@@ -47,3 +48,6 @@ version = "^0"
 [dependencies.serde]
 version = "^1"
 features = ["derive"]
+
+[dependencies.once_cell]
+version = "^1"

@@ -23,7 +23,7 @@ features = ["derive"]
 [dependencies.bcrypt]
 version = "^0"
 
-[dependencies.lazy_static]
+[dependencies.once_cell]
 version = "^1"
 
 [dependencies.regex]

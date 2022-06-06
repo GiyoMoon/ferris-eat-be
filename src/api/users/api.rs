@@ -1,3 +1,4 @@
+use super::auth::RefreshClaims;
 use axum::{extract, http::StatusCode, response::IntoResponse, Extension, Json};
 use entity::{
     entities::user,
@@ -8,7 +9,10 @@ use sea_orm::{
 };
 use validator::Validate;
 
-use crate::{api::users::service::login, app::EnvVars};
+use crate::{
+    api::users::service::{login, refresh_token},
+    app::EnvVars,
+};
 
 #[axum_macros::debug_handler]
 pub async fn register(
@@ -86,4 +90,19 @@ pub async fn register(
     let user = LoginUser::new(insert_result, login_result.0, login_result.1);
 
     Ok((StatusCode::CREATED, Json(user)))
+}
+
+#[axum_macros::debug_handler]
+pub async fn refresh(
+    refresh_claims: RefreshClaims,
+    Extension(ref env_vars): Extension<EnvVars>,
+) -> Result<(StatusCode, Json<(String, String)>), (StatusCode, String)> {
+    let refresh_result = refresh_token(refresh_claims, env_vars).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed refreshing tokens".to_string(),
+        )
+    })?;
+
+    Ok((StatusCode::OK, Json(refresh_result)))
 }
