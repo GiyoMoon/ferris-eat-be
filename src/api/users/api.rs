@@ -1,4 +1,5 @@
 use super::auth::RefreshClaims;
+use super::auth::Tokens;
 use axum::{extract, http::StatusCode, response::IntoResponse, Extension, Json};
 use entity::{
     entities::user,
@@ -20,10 +21,9 @@ pub async fn register(
     Extension(ref connection): Extension<DatabaseConnection>,
     Extension(ref env_vars): Extension<EnvVars>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
-    match payload.validate() {
-        Ok(_) => (),
-        Err(e) => return Err((StatusCode::BAD_REQUEST, e.to_string())),
-    };
+    payload
+        .validate()
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
 
     let existing_user = user::Entity::find()
         .filter(
@@ -96,7 +96,7 @@ pub async fn register(
 pub async fn refresh(
     refresh_claims: RefreshClaims,
     Extension(ref env_vars): Extension<EnvVars>,
-) -> Result<(StatusCode, Json<(String, String)>), (StatusCode, String)> {
+) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
     let refresh_result = refresh_token(refresh_claims, env_vars).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,

@@ -13,7 +13,7 @@ impl MigrationName for Migration {
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let create_table = manager
+        manager
             .create_table(
                 Table::create()
                     .table(Entity)
@@ -27,27 +27,17 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Column::Name).string().not_null())
                     .to_owned(),
             )
-            .await;
-
-        match create_table {
-            Ok(_) => (),
-            Err(e) => return Err(e),
-        };
+            .await?;
 
         let connection = manager.get_connection();
         let units = vec!["g", "kg", "ml", "l", "none"];
         for unit in units {
-            let insert_unit = ActiveModel {
+            ActiveModel {
                 name: Set(unit.to_string()),
                 ..Default::default()
             }
             .insert(connection)
-            .await;
-
-            match insert_unit {
-                Ok(_) => (),
-                Err(e) => return Err(e),
-            };
+            .await?;
         }
 
         Ok(())

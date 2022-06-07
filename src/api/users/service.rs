@@ -4,7 +4,7 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 
 use crate::app::EnvVars;
 
-use super::auth::{Claims, RefreshClaims};
+use super::auth::{Claims, RefreshClaims, Tokens};
 
 pub fn login(
     user: &user::Model,
@@ -31,7 +31,7 @@ pub fn login(
 pub fn refresh_token(
     refresh_claims: RefreshClaims,
     env_vars: &EnvVars,
-) -> Result<(String, String), jsonwebtoken::errors::Error> {
+) -> Result<Tokens, jsonwebtoken::errors::Error> {
     let token = encode(
         &Header::default(),
         &Claims::new(
@@ -50,5 +50,8 @@ pub fn refresh_token(
         &EncodingKey::from_secret(env_vars.refresh_secret.as_ref()),
     )?;
 
-    Ok((token, refresh_token))
+    Ok(Tokens {
+        token,
+        refresh_token,
+    })
 }

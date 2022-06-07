@@ -15,7 +15,7 @@ impl MigrationName for Migration {
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let create_table = manager
+        manager
             .create_table(
                 Table::create()
                     .table(Entity)
@@ -42,11 +42,7 @@ impl MigrationTrait for Migration {
                     )
                     .to_owned(),
             )
-            .await;
-        match create_table {
-            Ok(_) => (),
-            Err(e) => return Err(e),
-        };
+            .await?;
 
         manager
             .create_foreign_key(
@@ -61,19 +57,14 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let drop_foreign_key = manager
+        manager
             .drop_foreign_key(
                 ForeignKey::drop()
                     .name("recipe_user_id_fkey")
                     .table(Entity)
                     .to_owned(),
             )
-            .await;
-
-        match drop_foreign_key {
-            Ok(_) => (),
-            Err(e) => return Err(e),
-        };
+            .await?;
 
         manager
             .drop_table(Table::drop().table(Entity).to_owned())

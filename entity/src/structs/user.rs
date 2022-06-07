@@ -31,11 +31,7 @@ pub struct Password(String);
 
 impl Password {
     pub fn from_plain(clear_text_password: String) -> Result<Password, BcryptError> {
-        let hash = bcrypt::hash(clear_text_password, 10);
-        match hash {
-            Ok(hash) => Ok(Password(hash)),
-            Err(e) => Err(e),
-        }
+        Ok(Password(bcrypt::hash(clear_text_password, 10)?))
     }
 
     pub fn get(&self) -> &str {

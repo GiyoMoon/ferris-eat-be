@@ -119,3 +119,9 @@ impl IntoResponse for AuthError {
         (status, body).into_response()
     }
 }
+
+#[derive(Serialize)]
+pub struct Tokens {
+    pub token: String,
+    pub refresh_token: String,
+}
