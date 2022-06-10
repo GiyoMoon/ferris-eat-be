@@ -2,6 +2,7 @@
 
 pub use super::ingredient::Entity as Ingredient;
 pub use super::ingredient_quantity::Entity as IngredientQuantity;
+pub use super::ingredient_sort::Entity as IngredientSort;
 pub use super::recipe::Entity as Recipe;
 pub use super::seaql_migrations::Entity as SeaqlMigrations;
 pub use super::unit::Entity as Unit;

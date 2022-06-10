@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
+    pub user_id: Uuid,
     pub unit_id: i32,
     pub name: String,
 }
@@ -22,8 +23,18 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Unit,
+    #[sea_orm(
+        belongs_to = "super::user::Entity",
+        from = "Column::UserId",
+        to = "super::user::Column::Id",
+        on_update = "NoAction",
+        on_delete = "Cascade"
+    )]
+    User,
     #[sea_orm(has_many = "super::ingredient_quantity::Entity")]
     IngredientQuantity,
+    #[sea_orm(has_many = "super::ingredient_sort::Entity")]
+    IngredientSort,
 }
 
 impl Related<super::unit::Entity> for Entity {
@@ -32,9 +43,21 @@ impl Related<super::unit::Entity> for Entity {
     }
 }
 
+impl Related<super::user::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::User.def()
+    }
+}
+
 impl Related<super::ingredient_quantity::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::IngredientQuantity.def()
+    }
+}
+
+impl Related<super::ingredient_sort::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::IngredientSort.def()
     }
 }
 

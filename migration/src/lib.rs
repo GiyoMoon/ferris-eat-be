@@ -5,6 +5,7 @@ mod m20220605_162820_create_recipe_table;
 mod m20220605_192602_create_unit_table;
 mod m20220605_192716_create_ingredient_table;
 mod m20220610_001100_create_ingredient_quantity_table;
+mod m20220610_110331_create_ingredient_sort_table;
 
 pub struct Migrator;
 
@@ -17,6 +18,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20220605_192602_create_unit_table::Migration),
             Box::new(m20220605_192716_create_ingredient_table::Migration),
             Box::new(m20220610_001100_create_ingredient_quantity_table::Migration),
+            Box::new(m20220610_110331_create_ingredient_sort_table::Migration),
         ]
     }
 }

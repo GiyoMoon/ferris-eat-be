@@ -1,12 +1,12 @@
-use entity::entities::ingredient_quantity::{Column, Entity};
-use entity::entities::{ingredient, recipe};
+use entity::entities::ingredient;
+use entity::entities::ingredient_sort::{Column, Entity};
 use sea_orm_migration::prelude::*;
 
 pub struct Migration;
 
 impl MigrationName for Migration {
     fn name(&self) -> &str {
-        "m20220610_001100_create_ingredient_quantity_table"
+        "m20220610_110331_create_ingredient_sort_table"
     }
 }
 
@@ -24,9 +24,9 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(Column::RecipeId).integer().not_null())
                     .col(ColumnDef::new(Column::IngredientId).integer().not_null())
-                    .col(ColumnDef::new(Column::Quantity).integer().not_null())
+                    .col(ColumnDef::new(Column::OrderId).integer().not_null())
+                    .col(ColumnDef::new(Column::OrderAfter).integer().not_null())
                     .to_owned(),
             )
             .await?;
@@ -34,18 +34,7 @@ impl MigrationTrait for Migration {
         manager
             .create_foreign_key(
                 ForeignKey::create()
-                    .name("ingredient_quantity_recipe_id_fkey")
-                    .from(Entity, Column::RecipeId)
-                    .to(recipe::Entity, recipe::Column::Id)
-                    .on_delete(ForeignKeyAction::Cascade)
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .create_foreign_key(
-                ForeignKey::create()
-                    .name("ingredient_quantity_ingredient_id_fkey")
+                    .name("ingredient_sort_ingredient_id_fkey")
                     .from(Entity, Column::IngredientId)
                     .to(ingredient::Entity, ingredient::Column::Id)
                     .on_delete(ForeignKeyAction::Cascade)
@@ -58,16 +47,7 @@ impl MigrationTrait for Migration {
         manager
             .drop_foreign_key(
                 ForeignKey::drop()
-                    .name("ingredient_quantity_ingredient_id_fkey")
-                    .table(Entity)
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .drop_foreign_key(
-                ForeignKey::drop()
-                    .name("ingredient_quantity_recipe_id_fkey")
+                    .name("ingredient_sort_ingredient_id_fkey")
                     .table(Entity)
                     .to_owned(),
             )

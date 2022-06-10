@@ -4,6 +4,7 @@ pub mod prelude;
 
 pub mod ingredient;
 pub mod ingredient_quantity;
+pub mod ingredient_sort;
 pub mod recipe;
 pub mod seaql_migrations;
 pub mod unit;

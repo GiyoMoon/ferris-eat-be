@@ -1,5 +1,5 @@
 use entity::entities::ingredient::{Column, Entity};
-use entity::entities::unit;
+use entity::entities::{unit, user};
 use sea_orm_migration::prelude::*;
 
 pub struct Migration;
@@ -24,8 +24,20 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
+                    .col(ColumnDef::new(Column::UserId).uuid().not_null())
                     .col(ColumnDef::new(Column::UnitId).integer().not_null())
                     .col(ColumnDef::new(Column::Name).string().not_null())
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("ingredient_user_id_fkey")
+                    .from(Entity, Column::UserId)
+                    .to(user::Entity, user::Column::Id)
+                    .on_delete(ForeignKeyAction::Cascade)
                     .to_owned(),
             )
             .await?;
@@ -47,6 +59,15 @@ impl MigrationTrait for Migration {
             .drop_foreign_key(
                 ForeignKey::drop()
                     .name("ingredient_unit_id_fkey")
+                    .table(Entity)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_foreign_key(
+                ForeignKey::drop()
+                    .name("ingredient_user_id_fkey")
                     .table(Entity)
                     .to_owned(),
             )
