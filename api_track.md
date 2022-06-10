@@ -1,10 +1,11 @@
 # Routes
 ## /users
-- [x] `/register`
-- [x] `/refresh`
-- [x] `/login`
-- [ ] `/update`(alias)
-- [ ] `/change_password`
+- [x] POST `/register`
+- [x] POST `/refresh`
+- [x] POST `/login`
+- [x] POST `/update`(alias, email)
+- [x] GET `/me`
+- [x] POST `/change_password`
 ## /recipes
 - [ ] `/` GET get (maybe paginate later)
 - [ ] `/` POST (name, ingredients(with unit count))

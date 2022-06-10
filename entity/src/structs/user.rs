@@ -12,8 +12,8 @@ pub struct UserInfo {
     pub email: String,
 }
 
-impl UserInfo {
-    pub fn new(a: Model) -> Self {
+impl From<Model> for UserInfo {
+    fn from(a: Model) -> Self {
         UserInfo {
             id: a.id,
             username: a.username,
@@ -27,6 +27,18 @@ impl UserInfo {
 pub struct UserLogin {
     pub username: String,
     pub password: String,
+}
+
+#[derive(Deserialize)]
+pub struct UserUpdate {
+    pub alias: String,
+    pub email: String,
+}
+
+#[derive(Deserialize)]
+pub struct UserChangePassword {
+    pub old_password: String,
+    pub new_password: String,
 }
 
 pub struct Password(String);

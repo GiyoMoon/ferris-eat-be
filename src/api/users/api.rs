@@ -1,7 +1,7 @@
-use super::auth::{RefreshClaims, Tokens};
+use super::auth::{Claims, RefreshClaims, Tokens};
 use super::service::get_tokens;
 use axum::{extract, http::StatusCode, Extension, Json};
-use entity::structs::user::UserLogin;
+use entity::structs::user::{UserChangePassword, UserInfo, UserLogin, UserUpdate};
 use entity::{entities::user, structs::user::Password};
 use sea_orm::{
     prelude::Uuid, ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
@@ -134,6 +134,112 @@ pub async fn login(
     }
 
     let tokens = get_tokens(user.id, user.password).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed refreshing tokens".to_string(),
+        )
+    })?;
+
+    Ok((StatusCode::OK, Json(tokens)))
+}
+
+#[axum_macros::debug_handler]
+pub async fn me(
+    claims: Claims,
+    Extension(ref connection): Extension<DatabaseConnection>,
+) -> Result<(StatusCode, Json<UserInfo>), (StatusCode, String)> {
+    let user = user::Entity::find_by_id(claims.get_sub())
+        .one(connection)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed getting user".to_string(),
+            )
+        })?
+        .ok_or((StatusCode::UNAUTHORIZED, "Failed getting user".to_string()))?;
+
+    Ok((StatusCode::OK, Json(UserInfo::from(user))))
+}
+
+#[axum_macros::debug_handler]
+pub async fn update(
+    claims: Claims,
+    extract::Json(payload): extract::Json<UserUpdate>,
+    Extension(ref connection): Extension<DatabaseConnection>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let mut user: user::ActiveModel = user::Entity::find_by_id(claims.get_sub())
+        .one(connection)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed updating user".to_string(),
+            )
+        })?
+        .ok_or((StatusCode::UNAUTHORIZED, "Failed updating user".to_string()))?
+        .into();
+
+    user.alias = Set(payload.alias);
+    user.email = Set(payload.email);
+
+    user.update(connection).await.map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed updating user".to_string(),
+        )
+    })?;
+
+    Ok(StatusCode::OK)
+}
+
+#[axum_macros::debug_handler]
+pub async fn change_password(
+    claims: Claims,
+    extract::Json(payload): extract::Json<UserChangePassword>,
+    Extension(ref connection): Extension<DatabaseConnection>,
+) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
+    let user = user::Entity::find_by_id(claims.get_sub())
+        .one(connection)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed changing password".to_string(),
+            )
+        })?
+        .ok_or((
+            StatusCode::UNAUTHORIZED,
+            "Failed changing password".to_string(),
+        ))?;
+
+    let valid_password = Password::from_hash(user.password.clone())
+        .verify(payload.old_password)
+        .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid old password".to_string()))?;
+
+    if !valid_password {
+        return Err((StatusCode::UNAUTHORIZED, "Invalid old password".to_string()));
+    }
+
+    let mut user: user::ActiveModel = user.into();
+
+    let hashed_password = Password::from_plain(payload.new_password).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error while hashing the password".to_string(),
+        )
+    })?;
+
+    user.password = Set(hashed_password.get().to_string());
+
+    user.update(connection).await.map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed changing password".to_string(),
+        )
+    })?;
+
+    let tokens = get_tokens(claims.get_sub(), hashed_password.get().to_string()).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed refreshing tokens".to_string(),
