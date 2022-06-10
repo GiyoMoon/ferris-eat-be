@@ -1,5 +1,5 @@
 use super::auth::{Claims, RefreshClaims, Tokens};
-use super::service::get_tokens;
+use super::service::{get_tokens, get_user_by_uuid};
 use axum::{extract, http::StatusCode, Extension, Json};
 use entity::structs::user::{UserChangePassword, UserInfo, UserLogin, UserUpdate};
 use entity::{entities::user, structs::user::Password};
@@ -72,12 +72,7 @@ pub async fn register(
         )
     })?;
 
-    let tokens = get_tokens(insert_result.id, insert_result.password).map_err(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed creating user".to_string(),
-        )
-    })?;
+    let tokens = get_tokens(insert_result.id, insert_result.password)?;
 
     Ok((StatusCode::CREATED, Json(tokens)))
 }
@@ -86,13 +81,7 @@ pub async fn register(
 pub async fn refresh(
     refresh_claims: RefreshClaims,
 ) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
-    let tokens =
-        get_tokens(refresh_claims.claims.get_sub(), refresh_claims.password).map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed refreshing tokens".to_string(),
-            )
-        })?;
+    let tokens = get_tokens(refresh_claims.claims.get_sub(), refresh_claims.password)?;
 
     Ok((StatusCode::OK, Json(tokens)))
 }
@@ -133,12 +122,7 @@ pub async fn login(
         ));
     }
 
-    let tokens = get_tokens(user.id, user.password).map_err(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed refreshing tokens".to_string(),
-        )
-    })?;
+    let tokens = get_tokens(user.id, user.password)?;
 
     Ok((StatusCode::OK, Json(tokens)))
 }
@@ -148,16 +132,7 @@ pub async fn me(
     claims: Claims,
     Extension(ref connection): Extension<DatabaseConnection>,
 ) -> Result<(StatusCode, Json<UserInfo>), (StatusCode, String)> {
-    let user = user::Entity::find_by_id(claims.get_sub())
-        .one(connection)
-        .await
-        .map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed getting user".to_string(),
-            )
-        })?
-        .ok_or((StatusCode::UNAUTHORIZED, "Failed getting user".to_string()))?;
+    let user = get_user_by_uuid(claims.get_sub(), connection).await?;
 
     Ok((StatusCode::OK, Json(UserInfo::from(user))))
 }
@@ -168,7 +143,16 @@ pub async fn update(
     extract::Json(payload): extract::Json<UserUpdate>,
     Extension(ref connection): Extension<DatabaseConnection>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    let mut user: user::ActiveModel = user::Entity::find_by_id(claims.get_sub())
+    payload
+        .validate()
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let existing_user = user::Entity::find()
+        .filter(
+            user::Column::Email
+                .eq(payload.email.to_lowercase())
+                .and(user::Column::Id.ne(claims.get_sub())),
+        )
         .one(connection)
         .await
         .map_err(|_| {
@@ -176,12 +160,19 @@ pub async fn update(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed updating user".to_string(),
             )
-        })?
-        .ok_or((StatusCode::UNAUTHORIZED, "Failed updating user".to_string()))?
-        .into();
+        })?;
+
+    match existing_user {
+        None => (),
+        Some(_) => {
+            return Err((StatusCode::BAD_REQUEST, "Email already in use".to_string()));
+        }
+    }
+
+    let mut user: user::ActiveModel = get_user_by_uuid(claims.get_sub(), connection).await?.into();
 
     user.alias = Set(payload.alias);
-    user.email = Set(payload.email);
+    user.email = Set(payload.email.to_lowercase());
 
     user.update(connection).await.map_err(|_| {
         (
@@ -199,19 +190,11 @@ pub async fn change_password(
     extract::Json(payload): extract::Json<UserChangePassword>,
     Extension(ref connection): Extension<DatabaseConnection>,
 ) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
-    let user = user::Entity::find_by_id(claims.get_sub())
-        .one(connection)
-        .await
-        .map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed changing password".to_string(),
-            )
-        })?
-        .ok_or((
-            StatusCode::UNAUTHORIZED,
-            "Failed changing password".to_string(),
-        ))?;
+    payload
+        .validate()
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let user = get_user_by_uuid(claims.get_sub(), connection).await?;
 
     let valid_password = Password::from_hash(user.password.clone())
         .verify(payload.old_password)
@@ -235,16 +218,11 @@ pub async fn change_password(
     user.update(connection).await.map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed changing password".to_string(),
+            "Failed changing the password".to_string(),
         )
     })?;
 
-    let tokens = get_tokens(claims.get_sub(), hashed_password.get().to_string()).map_err(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed refreshing tokens".to_string(),
-        )
-    })?;
+    let tokens = get_tokens(claims.get_sub(), hashed_password.get().to_string())?;
 
     Ok((StatusCode::OK, Json(tokens)))
 }
