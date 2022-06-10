@@ -1,4 +1,4 @@
-use bcrypt::BcryptError;
+use bcrypt::{BcryptError, BcryptResult};
 use sea_orm::prelude::Uuid;
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +23,12 @@ impl UserInfo {
     }
 }
 
+#[derive(Deserialize)]
+pub struct UserLogin {
+    pub username: String,
+    pub password: String,
+}
+
 pub struct Password(String);
 
 impl Password {
@@ -30,7 +36,15 @@ impl Password {
         Ok(Password(bcrypt::hash(clear_text_password, 10)?))
     }
 
+    pub fn from_hash(hash: String) -> Password {
+        Password(hash)
+    }
+
     pub fn get(&self) -> &str {
         &self.0
+    }
+
+    pub fn verify(&self, clear_text_password: String) -> BcryptResult<bool> {
+        bcrypt::verify(clear_text_password, &self.0)
     }
 }

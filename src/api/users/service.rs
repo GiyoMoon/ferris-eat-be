@@ -1,59 +1,31 @@
 use chrono::{Duration, Utc};
-use entity::entities::user;
 use jsonwebtoken::{encode, EncodingKey, Header};
-
-use crate::app::EnvVars;
+use once_cell::sync::Lazy;
+use sea_orm::prelude::Uuid;
 
 use super::auth::{Claims, Tokens};
 
-pub fn login(
-    user: &user::Model,
-    env_vars: &EnvVars,
-) -> Result<Tokens, jsonwebtoken::errors::Error> {
+static SECRET: Lazy<String> = Lazy::new(|| {
+    let secret = std::env::var("SECRET").expect("SECRET env var not found");
+    secret
+});
+
+static REFRESH_SECRET: Lazy<String> = Lazy::new(|| {
+    let secret = std::env::var("REFRESH_SECRET").expect("REFRESH_SECRET env var not found");
+    secret
+});
+
+pub fn get_tokens(uuid: Uuid, password: String) -> Result<Tokens, jsonwebtoken::errors::Error> {
     let token = encode(
         &Header::default(),
-        &Claims::new(
-            user.id,
-            (Utc::now() + Duration::minutes(5)).timestamp() as u64,
-        ),
-        &EncodingKey::from_secret(env_vars.secret.as_ref()),
+        &Claims::new(uuid, (Utc::now() + Duration::minutes(5)).timestamp() as u64),
+        &EncodingKey::from_secret(SECRET.as_ref()),
     )?;
 
     let refresh_token = encode(
         &Header::default(),
-        &Claims::new(user.id, (Utc::now() + Duration::days(7)).timestamp() as u64),
-        &EncodingKey::from_secret(
-            (env_vars.refresh_secret.clone() + user.password.as_str()).as_ref(),
-        ),
-    )?;
-
-    Ok(Tokens {
-        token,
-        refresh_token,
-    })
-}
-
-pub fn refresh_token(
-    claims: Claims,
-    password: String,
-    env_vars: &EnvVars,
-) -> Result<Tokens, jsonwebtoken::errors::Error> {
-    let token = encode(
-        &Header::default(),
-        &Claims::new(
-            claims.get_sub(),
-            (Utc::now() + Duration::minutes(5)).timestamp() as u64,
-        ),
-        &EncodingKey::from_secret(env_vars.secret.as_ref()),
-    )?;
-
-    let refresh_token = encode(
-        &Header::default(),
-        &Claims::new(
-            claims.get_sub(),
-            (Utc::now() + Duration::days(7)).timestamp() as u64,
-        ),
-        &EncodingKey::from_secret((env_vars.refresh_secret.clone() + password.as_str()).as_ref()),
+        &Claims::new(uuid, (Utc::now() + Duration::days(7)).timestamp() as u64),
+        &EncodingKey::from_secret((REFRESH_SECRET.clone() + password.as_str()).as_ref()),
     )?;
 
     Ok(Tokens {

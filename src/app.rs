@@ -6,16 +6,11 @@ use migration::{Migrator, MigratorTrait};
 
 use crate::routes::routes;
 
-#[derive(Clone)]
-pub struct EnvVars {
-    pub secret: String,
-    pub refresh_secret: String,
-}
-
 pub async fn init() {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL env var not found");
-    let secret = env::var("SECRET").expect("SECRET env var not found");
-    let refresh_secret = env::var("REFRESH_SECRET").expect("REFRESH_SECRET env var not found");
+    // make sure all environment variables exist at startup
+    env::var("SECRET").expect("SECRET env var not found");
+    env::var("REFRESH_SECRET").expect("REFRESH_SECRET env var not found");
 
     let connection = sea_orm::Database::connect(&database_url)
         .await
@@ -27,15 +22,10 @@ pub async fn init() {
         .parse()
         .expect("BIND_ADDRESS is invalid");
 
-    let env_vars = EnvVars {
-        secret,
-        refresh_secret,
-    };
-
     println!("Server started on {}", bind_address);
 
     Server::bind(&bind_address)
-        .serve(routes(connection, env_vars).into_make_service())
+        .serve(routes(connection).into_make_service())
         .await
         .unwrap();
 }

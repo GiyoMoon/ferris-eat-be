@@ -1,22 +1,17 @@
-use super::auth::RefreshClaims;
-use super::auth::Tokens;
+use super::auth::{RefreshClaims, Tokens};
+use super::service::get_tokens;
 use axum::{extract, http::StatusCode, Extension, Json};
+use entity::structs::user::UserLogin;
 use entity::{entities::user, structs::user::Password};
 use sea_orm::{
     prelude::Uuid, ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
 };
 use validator::Validate;
 
-use crate::{
-    api::users::service::{login, refresh_token},
-    app::EnvVars,
-};
-
 #[axum_macros::debug_handler]
 pub async fn register(
     extract::Json(payload): extract::Json<user::Model>,
     Extension(ref connection): Extension<DatabaseConnection>,
-    Extension(ref env_vars): Extension<EnvVars>,
 ) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
     payload
         .validate()
@@ -77,7 +72,7 @@ pub async fn register(
         )
     })?;
 
-    let tokens = login(&insert_result, env_vars).map_err(|_| {
+    let tokens = get_tokens(insert_result.id, insert_result.password).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed creating user".to_string(),
@@ -90,15 +85,60 @@ pub async fn register(
 #[axum_macros::debug_handler]
 pub async fn refresh(
     refresh_claims: RefreshClaims,
-    Extension(ref env_vars): Extension<EnvVars>,
 ) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
-    let refresh_result = refresh_token(refresh_claims.claims, refresh_claims.password, env_vars)
-        .map_err(|_| {
+    let tokens =
+        get_tokens(refresh_claims.claims.get_sub(), refresh_claims.password).map_err(|_| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed refreshing tokens".to_string(),
             )
         })?;
 
-    Ok((StatusCode::OK, Json(refresh_result)))
+    Ok((StatusCode::OK, Json(tokens)))
+}
+
+#[axum_macros::debug_handler]
+pub async fn login(
+    extract::Json(payload): extract::Json<UserLogin>,
+    Extension(ref connection): Extension<DatabaseConnection>,
+) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
+    let user = user::Entity::find()
+        .filter(user::Column::Username.eq(payload.username))
+        .one(connection)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed logging in".to_string(),
+            )
+        })?
+        .ok_or((
+            StatusCode::UNAUTHORIZED,
+            "Invalid username or password".to_string(),
+        ))?;
+
+    let valid_password = Password::from_hash(user.password.clone())
+        .verify(payload.password)
+        .map_err(|_| {
+            (
+                StatusCode::UNAUTHORIZED,
+                "Invalid username or password".to_string(),
+            )
+        })?;
+
+    if !valid_password {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            "Invalid username or password".to_string(),
+        ));
+    }
+
+    let tokens = get_tokens(user.id, user.password).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed refreshing tokens".to_string(),
+        )
+    })?;
+
+    Ok((StatusCode::OK, Json(tokens)))
 }
