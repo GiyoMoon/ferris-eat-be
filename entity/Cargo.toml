@@ -26,8 +26,8 @@ version = "^0"
 [dependencies.once_cell]
 version = "^1"
 
-[dependencies.regex]
-version = "^1"
+[dependencies.fancy-regex]
+version = "^0"
 
 [dependencies.chrono]
 version = "^0"

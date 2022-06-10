@@ -1,6 +1,6 @@
 use bcrypt::{BcryptError, BcryptResult};
+use fancy_regex::Regex;
 use once_cell::sync::Lazy;
-use regex::Regex;
 use sea_orm::prelude::Uuid;
 use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationError};
@@ -39,36 +39,26 @@ pub struct UserUpdate {
     pub email: String,
 }
 
-static LETTER_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*[a-zA-Z]+.*$").unwrap());
-static NUMBER_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*\d+.*$").unwrap());
-static SPECIAL_CHAR_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*[^\da-zA-Z]+.*$").unwrap());
+static PASSWORD_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?=.*[A-Za-z])(?=.*\d)(?=.*[^\dA-Za-z]).{8,}").unwrap());
 
-fn validate_username(value: &str) -> Result<(), ValidationError> {
-    let letter = LETTER_REGEX.is_match(value);
-    if !letter {
+fn validate_password(value: &str) -> Result<(), ValidationError> {
+    let is_match = PASSWORD_REGEX
+        .is_match(value)
+        .map_err(|_| ValidationError::new("invalid_password"))?;
+    if !is_match {
         return Err(ValidationError::new("invalid_password"));
-    };
-    let number = NUMBER_REGEX.is_match(value);
-    if !number {
-        return Err(ValidationError::new("invalid_password"));
-    };
-    let special_char = SPECIAL_CHAR_REGEX.is_match(value);
-    if !special_char {
-        return Err(ValidationError::new("invalid_password"));
-    };
+    }
     Ok(())
 }
 
 #[derive(Deserialize, Validate)]
 pub struct UserChangePassword {
     pub old_password: String,
-    #[validate(
-        length(min = 8, message = "Password has to be 8 or more characters long"),
-        custom(
-            function = "validate_username",
-            message = "Password must contain at least one letter, one number and one special character"
-        )
-    )]
+    #[validate(custom(
+        function = "validate_password",
+        message = "Password must at least be 8 chars long, contain at least one letter, one number and one special character"
+    ))]
     pub new_password: String,
 }
 
