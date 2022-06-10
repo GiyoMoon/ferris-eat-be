@@ -5,24 +5,20 @@ use serde::{Deserialize, Serialize};
 use crate::entities::user::Model;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct LoginUser {
+pub struct UserInfo {
     pub id: Uuid,
     pub username: String,
     pub alias: String,
     pub email: String,
-    pub token: String,
-    pub refresh_token: String,
 }
 
-impl LoginUser {
-    pub fn new(a: Model, token: String, refresh_token: String) -> Self {
-        LoginUser {
+impl UserInfo {
+    pub fn new(a: Model) -> Self {
+        UserInfo {
             id: a.id,
             username: a.username,
             alias: a.alias,
             email: a.email,
-            token,
-            refresh_token,
         }
     }
 }

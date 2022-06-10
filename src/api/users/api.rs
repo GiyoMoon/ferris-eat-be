@@ -1,10 +1,7 @@
 use super::auth::RefreshClaims;
 use super::auth::Tokens;
-use axum::{extract, http::StatusCode, response::IntoResponse, Extension, Json};
-use entity::{
-    entities::user,
-    structs::user::{LoginUser, Password},
-};
+use axum::{extract, http::StatusCode, Extension, Json};
+use entity::{entities::user, structs::user::Password};
 use sea_orm::{
     prelude::Uuid, ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
 };
@@ -20,7 +17,7 @@ pub async fn register(
     extract::Json(payload): extract::Json<user::Model>,
     Extension(ref connection): Extension<DatabaseConnection>,
     Extension(ref env_vars): Extension<EnvVars>,
-) -> Result<impl IntoResponse, impl IntoResponse> {
+) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
     payload
         .validate()
         .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
@@ -80,16 +77,14 @@ pub async fn register(
         )
     })?;
 
-    let login_result = login(&insert_result, env_vars).map_err(|_| {
+    let tokens = login(&insert_result, env_vars).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed creating user".to_string(),
         )
     })?;
 
-    let user = LoginUser::new(insert_result, login_result.0, login_result.1);
-
-    Ok((StatusCode::CREATED, Json(user)))
+    Ok((StatusCode::CREATED, Json(tokens)))
 }
 
 #[axum_macros::debug_handler]
@@ -97,12 +92,13 @@ pub async fn refresh(
     refresh_claims: RefreshClaims,
     Extension(ref env_vars): Extension<EnvVars>,
 ) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
-    let refresh_result = refresh_token(refresh_claims, env_vars).map_err(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed refreshing tokens".to_string(),
-        )
-    })?;
+    let refresh_result = refresh_token(refresh_claims.claims, refresh_claims.password, env_vars)
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed refreshing tokens".to_string(),
+            )
+        })?;
 
     Ok((StatusCode::OK, Json(refresh_result)))
 }

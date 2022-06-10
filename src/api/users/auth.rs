@@ -1,15 +1,18 @@
+use std::str::from_utf8;
+
 use axum::{
     async_trait,
     extract::{FromRequest, RequestParts},
     headers::{authorization::Bearer, Authorization},
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json, TypedHeader,
+    Extension, Json, TypedHeader,
 };
+use entity::entities::user;
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use migration::tests_cfg::json;
 use once_cell::sync::Lazy;
-use sea_orm::prelude::Uuid;
+use sea_orm::{prelude::Uuid, DatabaseConnection, EntityTrait};
 use serde::{Deserialize, Serialize};
 
 static SECRET: Lazy<String> = Lazy::new(|| {
@@ -32,9 +35,9 @@ impl Claims {
     pub fn new(user_id: Uuid, exp: u64) -> Self {
         Self { sub: user_id, exp }
     }
-    // pub fn get_sub(&self) -> Uuid {
-    //     self.sub
-    // }
+    pub fn get_sub(&self) -> Uuid {
+        self.sub
+    }
 }
 
 #[async_trait]
@@ -50,7 +53,8 @@ where
             TypedHeader::<Authorization<Bearer>>::from_request(req)
                 .await
                 .map_err(|_| AuthError::MissingCredentials)?;
-        // Decode the user data
+
+        // Validate and decode the jwt
         let token_data = decode::<Claims>(
             bearer.token(),
             &DecodingKey::from_secret(&SECRET.as_ref()),
@@ -62,19 +66,9 @@ where
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct RefreshClaims {
-    sub: Uuid,
-    exp: u64,
-}
-
-impl RefreshClaims {
-    pub fn new(user_id: Uuid, exp: u64) -> Self {
-        Self { sub: user_id, exp }
-    }
-    pub fn get_sub(&self) -> Uuid {
-        self.sub
-    }
+    pub claims: Claims,
+    pub password: String,
 }
 
 #[async_trait]
@@ -90,15 +84,39 @@ where
             TypedHeader::<Authorization<Bearer>>::from_request(req)
                 .await
                 .map_err(|_| AuthError::MissingCredentials)?;
-        // Decode the user data
-        let token_data = decode::<RefreshClaims>(
+
+        // Get the jwt payload and decode it
+        let base64_payload = bearer
+            .token()
+            .split(".")
+            .nth(1)
+            .ok_or(AuthError::InvalidToken)?;
+        let decoded = &base64::decode(base64_payload).map_err(|_| AuthError::InvalidToken)?[..];
+        let payload = from_utf8(decoded).map_err(|_| AuthError::InvalidToken)?;
+        let claims: Claims = serde_json::from_str(payload).map_err(|_| AuthError::InvalidToken)?;
+
+        // Get the user from the database
+        let Extension(connection) = Extension::<DatabaseConnection>::from_request(req)
+            .await
+            .expect("`DatabaseConnection` extension is missing");
+        let user = user::Entity::find_by_id(claims.sub)
+            .one(&connection)
+            .await
+            .map_err(|_| AuthError::InvalidToken)?
+            .ok_or(AuthError::InvalidToken)?;
+
+        // Validate and decode the jwt
+        let token_data = decode::<Claims>(
             bearer.token(),
-            &DecodingKey::from_secret(&REFRESH_SECRET.as_ref()),
+            &DecodingKey::from_secret((REFRESH_SECRET.clone() + user.password.as_str()).as_ref()),
             &Validation::default(),
         )
         .map_err(|_| AuthError::InvalidToken)?;
 
-        Ok(token_data.claims)
+        Ok(RefreshClaims {
+            claims: token_data.claims,
+            password: user.password,
+        })
     }
 }
 

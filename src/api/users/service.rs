@@ -4,12 +4,12 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 
 use crate::app::EnvVars;
 
-use super::auth::{Claims, RefreshClaims, Tokens};
+use super::auth::{Claims, Tokens};
 
 pub fn login(
     user: &user::Model,
     env_vars: &EnvVars,
-) -> Result<(String, String), jsonwebtoken::errors::Error> {
+) -> Result<Tokens, jsonwebtoken::errors::Error> {
     let token = encode(
         &Header::default(),
         &Claims::new(
@@ -22,20 +22,26 @@ pub fn login(
     let refresh_token = encode(
         &Header::default(),
         &Claims::new(user.id, (Utc::now() + Duration::days(7)).timestamp() as u64),
-        &EncodingKey::from_secret(env_vars.refresh_secret.as_ref()),
+        &EncodingKey::from_secret(
+            (env_vars.refresh_secret.clone() + user.password.as_str()).as_ref(),
+        ),
     )?;
 
-    Ok((token, refresh_token))
+    Ok(Tokens {
+        token,
+        refresh_token,
+    })
 }
 
 pub fn refresh_token(
-    refresh_claims: RefreshClaims,
+    claims: Claims,
+    password: String,
     env_vars: &EnvVars,
 ) -> Result<Tokens, jsonwebtoken::errors::Error> {
     let token = encode(
         &Header::default(),
         &Claims::new(
-            refresh_claims.get_sub(),
+            claims.get_sub(),
             (Utc::now() + Duration::minutes(5)).timestamp() as u64,
         ),
         &EncodingKey::from_secret(env_vars.secret.as_ref()),
@@ -43,11 +49,11 @@ pub fn refresh_token(
 
     let refresh_token = encode(
         &Header::default(),
-        &RefreshClaims::new(
-            refresh_claims.get_sub(),
+        &Claims::new(
+            claims.get_sub(),
             (Utc::now() + Duration::days(7)).timestamp() as u64,
         ),
-        &EncodingKey::from_secret(env_vars.refresh_secret.as_ref()),
+        &EncodingKey::from_secret((env_vars.refresh_secret.clone() + password.as_str()).as_ref()),
     )?;
 
     Ok(Tokens {
