@@ -1,17 +1,17 @@
 # Routes
 ## /users
 - [x] POST `/register`
-- [x] POST `/refresh`
+- [x] PATCH `/refresh`
 - [x] POST `/login`
-- [x] POST `/update`(alias, email)
+- [x] PUT `/update`(alias, email)
 - [x] GET `/me`
-- [x] POST `/change_password`
+- [x] PUT `/change_password`
 ## /recipes
-- [ ] `/` GET get (maybe paginate later)
-- [ ] `/` POST (name, ingredients(with unit count))
-- [ ] `/:id` GET detail (with ingredients) (maybe paginate later)
-- [ ] `/:id` UPDATE (name, ingredients(with unit count))
-- [ ] `/:id` DELETE
+- [ ] GET `/` (maybe paginate later)
+- [ ] POST `/` (name, ingredients(with unit quantity))
+- [ ] GET `/:id` detail (with ingredients) (maybe paginate later)
+- [ ] PUT `/:id` UPDATE (name, ingredients(with unit count))
+- [ ] DELETE `/:id`
 ## /ingredients
 - [ ] `/` GET (maybe pageinate later, but hard with sorting)
 - [ ] `/` POST (name, unit)
