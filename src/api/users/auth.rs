@@ -1,5 +1,3 @@
-use std::str::from_utf8;
-
 use axum::{
     async_trait,
     extract::{FromRequest, RequestParts},
@@ -8,12 +6,13 @@ use axum::{
     response::{IntoResponse, Response},
     Extension, Json, TypedHeader,
 };
-use entity::entities::user;
 use jsonwebtoken::{decode, DecodingKey, Validation};
-use migration::tests_cfg::json;
 use once_cell::sync::Lazy;
-use sea_orm::{prelude::Uuid, DatabaseConnection, EntityTrait};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use sqlx::PgPool;
+use std::str::from_utf8;
+use uuid::Uuid;
 
 static SECRET: Lazy<String> = Lazy::new(|| {
     let secret = std::env::var("SECRET").expect("SECRET env var not found");
@@ -25,7 +24,7 @@ static REFRESH_SECRET: Lazy<String> = Lazy::new(|| {
     secret
 });
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct Claims {
     sub: Uuid,
     exp: u64,
@@ -96,14 +95,13 @@ where
         let claims: Claims = serde_json::from_str(payload).map_err(|_| AuthError::InvalidToken)?;
 
         // Get the user from the database
-        let Extension(connection) = Extension::<DatabaseConnection>::from_request(req)
+        let Extension(pool) = Extension::<PgPool>::from_request(req)
             .await
             .expect("`DatabaseConnection` extension is missing");
-        let user = user::Entity::find_by_id(claims.sub)
-            .one(&connection)
+        let user = sqlx::query!(r#"SELECT * FROM "user" WHERE id = $1"#, claims.sub)
+            .fetch_one(&pool)
             .await
-            .map_err(|_| AuthError::InvalidToken)?
-            .ok_or(AuthError::InvalidToken)?;
+            .map_err(|_| AuthError::InvalidToken)?;
 
         // Validate and decode the jwt
         let token_data = decode::<Claims>(

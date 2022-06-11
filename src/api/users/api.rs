@@ -1,39 +1,41 @@
-use super::auth::{Claims, RefreshClaims, Tokens};
-use super::service::{get_tokens, get_user_by_uuid};
-use axum::{extract, http::StatusCode, Extension, Json};
-use entity::structs::user::{UserChangePassword, UserInfo, UserLogin, UserUpdate};
-use entity::{entities::user, structs::user::Password};
-use sea_orm::{
-    prelude::Uuid, ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
+use crate::{
+    api::users::{
+        auth::{Claims, RefreshClaims, Tokens},
+        service::{get_tokens, get_user_by_uuid},
+    },
+    structs::user::{
+        Password, UserChangePasswordReq, UserLoginReq, UserMeRes, UserRegisterReq, UserUpdateReq,
+    },
 };
+use axum::{extract, http::StatusCode, Extension, Json};
+use sqlx::PgPool;
+use uuid::Uuid;
 use validator::Validate;
 
 #[axum_macros::debug_handler]
 pub async fn register(
-    extract::Json(payload): extract::Json<user::Model>,
-    Extension(ref connection): Extension<DatabaseConnection>,
+    extract::Json(payload): extract::Json<UserRegisterReq>,
+    Extension(ref pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
     payload
         .validate()
         .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    let existing_user = user::Entity::find()
-        .filter(
-            user::Column::Username
-                .eq(payload.username.to_lowercase())
-                .or(user::Column::Email.eq(payload.email.to_lowercase())),
+    let existing_user = sqlx::query!(
+        r#"SELECT * FROM "user" WHERE username = $1 OR email = $2"#,
+        payload.username.to_lowercase(),
+        payload.email.to_lowercase()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error while creating user".to_string(),
         )
-        .one(connection)
-        .await
-        .map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed creating user".to_string(),
-            )
-        })?;
+    })?;
 
     match existing_user {
-        None => (),
         Some(user) => {
             if user.username == payload.username.to_lowercase() {
                 return Err((
@@ -44,6 +46,7 @@ pub async fn register(
                 return Err((StatusCode::BAD_REQUEST, "Email already in use".to_string()));
             }
         }
+        None => (),
     }
 
     let user_id: Uuid = Uuid::new_v4();
@@ -55,20 +58,24 @@ pub async fn register(
         )
     })?;
 
-    let insert_result = user::ActiveModel {
-        id: Set(user_id),
-        username: Set(payload.username.to_lowercase()),
-        alias: Set(payload.alias),
-        email: Set(payload.email.to_lowercase()),
-        password: Set(hashed_password.get().to_string()),
-        ..Default::default()
-    }
-    .insert(connection)
+    let insert_result = sqlx::query!(
+        r#"
+        INSERT INTO "user" ( id, username, alias, email, password )
+        VALUES ( $1, $2, $3, $4, $5 )
+        RETURNING id, password
+        "#,
+        user_id,
+        payload.username.to_lowercase(),
+        payload.alias,
+        payload.email.to_lowercase(),
+        hashed_password.get()
+    )
+    .fetch_one(pool)
     .await
     .map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed creating user".to_string(),
+            "Error while saving user".to_string(),
         )
     })?;
 
@@ -88,23 +95,21 @@ pub async fn refresh(
 
 #[axum_macros::debug_handler]
 pub async fn login(
-    extract::Json(payload): extract::Json<UserLogin>,
-    Extension(ref connection): Extension<DatabaseConnection>,
+    extract::Json(payload): extract::Json<UserLoginReq>,
+    Extension(ref pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
-    let user = user::Entity::find()
-        .filter(user::Column::Username.eq(payload.username))
-        .one(connection)
-        .await
-        .map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed logging in".to_string(),
-            )
-        })?
-        .ok_or((
+    let user = sqlx::query!(
+        r#"SELECT * FROM "user" WHERE username = $1"#,
+        payload.username.to_lowercase()
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|_| {
+        (
             StatusCode::UNAUTHORIZED,
             "Invalid username or password".to_string(),
-        ))?;
+        )
+    })?;
 
     let valid_password = Password::from_hash(user.password.clone())
         .verify(payload.password)
@@ -130,51 +135,53 @@ pub async fn login(
 #[axum_macros::debug_handler]
 pub async fn me(
     claims: Claims,
-    Extension(ref connection): Extension<DatabaseConnection>,
-) -> Result<(StatusCode, Json<UserInfo>), (StatusCode, String)> {
-    let user = get_user_by_uuid(claims.get_sub(), connection).await?;
+    Extension(ref pool): Extension<PgPool>,
+) -> Result<(StatusCode, Json<UserMeRes>), (StatusCode, String)> {
+    let user = get_user_by_uuid(claims.get_sub(), pool).await?;
 
-    Ok((StatusCode::OK, Json(UserInfo::from(user))))
+    Ok((StatusCode::OK, Json(UserMeRes::from(user))))
 }
 
 #[axum_macros::debug_handler]
 pub async fn update(
     claims: Claims,
-    extract::Json(payload): extract::Json<UserUpdate>,
-    Extension(ref connection): Extension<DatabaseConnection>,
+    extract::Json(payload): extract::Json<UserUpdateReq>,
+    Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     payload
         .validate()
         .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    let existing_user = user::Entity::find()
-        .filter(
-            user::Column::Email
-                .eq(payload.email.to_lowercase())
-                .and(user::Column::Id.ne(claims.get_sub())),
+    let existing_user = sqlx::query!(
+        r#"SELECT * FROM "user" WHERE email = $1 AND NOT id = $2"#,
+        payload.email.to_lowercase(),
+        claims.get_sub(),
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed updating user".to_string(),
         )
-        .one(connection)
-        .await
-        .map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed updating user".to_string(),
-            )
-        })?;
+    })?;
 
     match existing_user {
-        None => (),
         Some(_) => {
             return Err((StatusCode::BAD_REQUEST, "Email already in use".to_string()));
         }
+        None => (),
     }
 
-    let mut user: user::ActiveModel = get_user_by_uuid(claims.get_sub(), connection).await?.into();
-
-    user.alias = Set(payload.alias);
-    user.email = Set(payload.email.to_lowercase());
-
-    user.update(connection).await.map_err(|_| {
+    sqlx::query!(
+        r#"UPDATE "user" SET alias = $1, email = $2 WHERE id = $3"#,
+        payload.alias,
+        payload.email.to_lowercase(),
+        claims.get_sub(),
+    )
+    .execute(pool)
+    .await
+    .map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed updating user".to_string(),
@@ -187,14 +194,14 @@ pub async fn update(
 #[axum_macros::debug_handler]
 pub async fn change_password(
     claims: Claims,
-    extract::Json(payload): extract::Json<UserChangePassword>,
-    Extension(ref connection): Extension<DatabaseConnection>,
+    extract::Json(payload): extract::Json<UserChangePasswordReq>,
+    Extension(ref pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
     payload
         .validate()
         .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    let user = get_user_by_uuid(claims.get_sub(), connection).await?;
+    let user = get_user_by_uuid(claims.get_sub(), pool).await?;
 
     let valid_password = Password::from_hash(user.password.clone())
         .verify(payload.old_password)
@@ -204,8 +211,6 @@ pub async fn change_password(
         return Err((StatusCode::UNAUTHORIZED, "Invalid old password".to_string()));
     }
 
-    let mut user: user::ActiveModel = user.into();
-
     let hashed_password = Password::from_plain(payload.new_password).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -213,12 +218,17 @@ pub async fn change_password(
         )
     })?;
 
-    user.password = Set(hashed_password.get().to_string());
-
-    user.update(connection).await.map_err(|_| {
+    sqlx::query!(
+        r#"UPDATE "user" SET password = $1 WHERE id = $2"#,
+        hashed_password.get(),
+        claims.get_sub(),
+    )
+    .execute(pool)
+    .await
+    .map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed changing the password".to_string(),
+            "Failed updating user".to_string(),
         )
     })?;
 

@@ -1,10 +1,7 @@
-use axum::Server;
-
-use std::{env, net::SocketAddr};
-
-use migration::{Migrator, MigratorTrait};
-
 use crate::routes::routes;
+use axum::Server;
+use sqlx::PgPool;
+use std::{env, net::SocketAddr};
 
 pub async fn init() {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL env var not found");
@@ -12,10 +9,9 @@ pub async fn init() {
     env::var("SECRET").expect("SECRET env var not found");
     env::var("REFRESH_SECRET").expect("REFRESH_SECRET env var not found");
 
-    let connection = sea_orm::Database::connect(&database_url)
+    let pool = PgPool::connect(&database_url)
         .await
         .expect("Database connection failed");
-    Migrator::up(&connection, None).await.unwrap();
 
     let bind_address: SocketAddr = env::var("BIND_ADDRESS")
         .expect("BIND_ADDRESS env var not foundt")
@@ -25,7 +21,7 @@ pub async fn init() {
     println!("Server started on {}", bind_address);
 
     Server::bind(&bind_address)
-        .serve(routes(connection).into_make_service())
+        .serve(routes(pool).into_make_service())
         .await
         .unwrap();
 }
