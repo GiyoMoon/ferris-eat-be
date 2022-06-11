@@ -169,6 +169,50 @@
     },
     "query": "SELECT * FROM \"user\" WHERE email = $1 AND NOT id = $2"
   },
+  "81506095a7ba9a16db3f4762ef3dc333b21ed098ca3118a49f49411dab1e9ecb": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 3,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "ingredients",
+          "ordinal": 4,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n        SELECT recipe.id,recipe. name, recipe.created_at,recipe. updated_at, count(iq.id) AS ingredients\n        FROM recipe\n        LEFT OUTER JOIN ingredient_quantity AS iq ON recipe.id = iq.recipe_id\n        WHERE recipe.user_id = $1 group by recipe.id\n        "
+  },
   "8f18db3d72e7536df5eecfa54e433c5a080b7b8ee2988d4a2b31100eb82b81d5": {
     "describe": {
       "columns": [

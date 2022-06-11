@@ -1,5 +1,7 @@
-use super::auth::{Claims, Tokens};
-use crate::structs::user::UserModel;
+use crate::{
+    api::auth::{Claims, Tokens},
+    structs::user::UserModel,
+};
 use axum::http::StatusCode;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use once_cell::sync::Lazy;

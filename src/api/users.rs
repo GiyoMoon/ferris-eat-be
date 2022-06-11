@@ -5,5 +5,4 @@ pub use api::me;
 pub use api::refresh;
 pub use api::register;
 pub use api::update;
-mod auth;
 mod service;

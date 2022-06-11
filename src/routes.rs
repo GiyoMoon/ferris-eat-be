@@ -13,7 +13,13 @@ pub fn routes(pool: PgPool) -> Router {
         .route("/me", get(api::users::me))
         .route("/update", put(api::users::update))
         .route("/change_password", put(api::users::change_password))
-        .layer(Extension(pool));
+        .layer(Extension(pool.clone()));
 
-    Router::new().nest("/api/users", users_api)
+    let recipes_api = Router::new()
+        .route("/", get(api::recipes::get_all))
+        .layer(Extension(pool.clone()));
+
+    Router::new()
+        .nest("/api/users", users_api)
+        .nest("/api/recipes", recipes_api)
 }

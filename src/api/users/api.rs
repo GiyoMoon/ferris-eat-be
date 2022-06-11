@@ -1,7 +1,7 @@
 use crate::{
-    api::users::{
+    api::{
         auth::{Claims, RefreshClaims, Tokens},
-        service::{get_tokens, get_user_by_uuid},
+        users::service::{get_tokens, get_user_by_uuid},
     },
     structs::user::{
         Password, UserChangePasswordReq, UserLoginReq, UserMeRes, UserRegisterReq, UserUpdateReq,

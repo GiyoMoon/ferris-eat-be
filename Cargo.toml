@@ -41,11 +41,16 @@ features = ["derive"]
 version = "^1"
 
 [dependencies.sqlx]
-version = "0.5.13"
+version = "^0"
 features = [ "runtime-tokio-rustls", "postgres", "uuid", "time", "offline" ]
 
 [dependencies.time]
 version = "^0.2"
+
+[dependencies.time-3]
+package = "time"
+version = "^0.3"
+features = [ "serde", "serde-well-known" ]
 
 [dependencies.tokio]
 version = "^1"
