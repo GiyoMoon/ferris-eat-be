@@ -7,8 +7,8 @@
 - [x] GET `/me`
 - [x] PUT `/change_password`
 ## /recipes
-- [ ] GET `/` (maybe paginate later)
-- [ ] POST `/` (name, ingredients(with unit quantity))
+- [x] GET `/` (maybe paginate later)
+- [x] POST `/` (name, ingredients(with unit quantity))
 - [ ] GET `/:id` detail (with ingredients) (maybe paginate later)
 - [ ] PUT `/:id` UPDATE (name, ingredients(with unit count))
 - [ ] DELETE `/:id`

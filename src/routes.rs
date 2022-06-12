@@ -17,6 +17,7 @@ pub fn routes(pool: PgPool) -> Router {
 
     let recipes_api = Router::new()
         .route("/", get(api::recipes::get_all))
+        .route("/", post(api::recipes::create))
         .layer(Extension(pool.clone()));
 
     Router::new()

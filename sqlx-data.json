@@ -112,6 +112,28 @@
     },
     "query": "SELECT * FROM \"user\" WHERE username = $1"
   },
+  "491e42071775144d2778633cd26a234dcd355f1e6c70c91c9b86ecfc7eb1cf44": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            INSERT INTO ingredient_quantity ( recipe_id, ingredient_id, quantity )\n            VALUES ( $1, $2, $3 )\n            RETURNING id\n            "
+  },
   "763b2f730923781f8ac8bed35266ba5b01b2e354ebb33551404ac91529eb5fa1": {
     "describe": {
       "columns": [
@@ -282,6 +304,27 @@
       }
     },
     "query": "UPDATE \"user\" SET password = $1 WHERE id = $2"
+  },
+  "a8d8cca1d45a22c13e5d8bdce4440aba8e50b2549a97a0959683614ca540fa73": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO recipe ( name, user_id )\n        VALUES ( $1, $2 )\n        RETURNING id\n        "
   },
   "bce8e943123094e7b039cfd374a0b84214712cafb8d21be7e66c48b6bf848ac5": {
     "describe": {
