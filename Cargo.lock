@@ -339,7 +339,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ferris-eat"
+name = "ferris_eat"
 version = "0.1.0"
 dependencies = [
  "axum",

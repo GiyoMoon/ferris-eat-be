@@ -1,5 +1,5 @@
 [package]
-name = "ferris-eat"
+name = "ferris_eat"
 version = "0.1.0"
 authors = ["GiyoMoon <giyomoon@gmail.com>"]
 edition = "2021"
