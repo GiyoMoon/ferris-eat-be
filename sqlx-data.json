@@ -434,6 +434,30 @@
     },
     "query": "UPDATE \"user\" SET password = $1, updated_at = $2 WHERE id = $3"
   },
+  "a493a0e83b37b3b10e1f223ad1ba39aad762909e88b9f48e4a545ee1477e9d0e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT id, name FROM unit"
+  },
   "a8d8cca1d45a22c13e5d8bdce4440aba8e50b2549a97a0959683614ca540fa73": {
     "describe": {
       "columns": [

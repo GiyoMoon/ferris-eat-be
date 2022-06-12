@@ -18,4 +18,4 @@
 - [ ] `/:id` UPDATE (name, unit)
 - [ ] `/:id` DELETE
 ## /units
-- [ ] `/` GET
+- [x] `/` GET
