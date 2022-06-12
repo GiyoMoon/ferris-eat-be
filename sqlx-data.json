@@ -197,6 +197,19 @@
     },
     "query": "SELECT id, sort FROM ingredient WHERE id = $1 AND user_id = $2"
   },
+  "32ae03bc526c4f83f3f938e3304afe094a96b928c500c993ab14cfb5bd33ef15": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "UPDATE ingredient SET unit_id = $1 WHERE id = $2"
+  },
   "33af80a2cbabd10da0198acbb1706ffa4245759686f1374c3c2b1659a8754828": {
     "describe": {
       "columns": [
@@ -298,6 +311,19 @@
       }
     },
     "query": "\n        INSERT INTO ingredient_quantity ( recipe_id, ingredient_id, quantity )\n        VALUES ( $1, $2, $3 )\n        RETURNING id\n        "
+  },
+  "6dc5cc52d613622b3c96a0ce6495bafb74efbccfadb53b9d80bc72c02d28e469": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int4"
+        ]
+      }
+    },
+    "query": "UPDATE ingredient SET name = $1 WHERE id = $2"
   },
   "763b2f730923781f8ac8bed35266ba5b01b2e354ebb33551404ac91529eb5fa1": {
     "describe": {
@@ -721,6 +747,27 @@
       }
     },
     "query": "\n        SELECT i.id, i.name, u.name as unit, inq.quantity, i.sort FROM ingredient_quantity as inq\n        INNER JOIN ingredient as i ON inq.ingredient_id = i.id\n        INNER JOIN unit as u ON i.unit_id = u.id\n        WHERE inq.recipe_id = $1\n        "
+  },
+  "e3209ae2a732618501ffad21f658d5bdbfa3d645307246168ea7fbab22c2bcde": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id FROM ingredient WHERE id = $1 AND user_id = $2"
   },
   "fa37118cc7541d37c2f314df9ddd7a892d6c4c03d6d428ce739cde9570bdac9e": {
     "describe": {

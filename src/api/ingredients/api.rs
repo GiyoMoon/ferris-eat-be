@@ -138,6 +138,65 @@ pub async fn create(
     Ok(StatusCode::CREATED)
 }
 
+#[derive(Deserialize)]
+pub struct IngredientUpdateReq {
+    name: Option<String>,
+    unit_id: Option<i32>,
+}
+
+#[axum_macros::debug_handler]
+pub async fn update(
+    claims: Claims,
+    Path(id): Path<i32>,
+    extract::Json(payload): extract::Json<IngredientUpdateReq>,
+    Extension(ref pool): Extension<PgPool>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    sqlx::query!(
+        r#"SELECT id FROM ingredient WHERE id = $1 AND user_id = $2"#,
+        id,
+        claims.get_sub()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed updating ingredient".to_string(),
+        )
+    })?
+    .ok_or((StatusCode::NOT_FOUND, "Ingredient not found".to_string()))?;
+
+    if let Some(name) = payload.name {
+        sqlx::query!(r#"UPDATE ingredient SET name = $1 WHERE id = $2"#, name, id,)
+            .execute(pool)
+            .await
+            .map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed updating ingredient".to_string(),
+                )
+            })?;
+    }
+
+    if let Some(unit_id) = payload.unit_id {
+        sqlx::query!(
+            r#"UPDATE ingredient SET unit_id = $1 WHERE id = $2"#,
+            unit_id,
+            id,
+        )
+        .execute(pool)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed updating ingredient".to_string(),
+            )
+        })?;
+    }
+
+    Ok(StatusCode::OK)
+}
+
 #[axum_macros::debug_handler]
 pub async fn delete(
     claims: Claims,

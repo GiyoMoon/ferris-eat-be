@@ -15,7 +15,8 @@
 ## /ingredients
 - [x] `/` GET (maybe pageinate later, but hard with sorting)
 - [x] `/` POST (name, unit)
-- [ ] `/:id` UPDATE (name, unit)
+- [ ] `/` PATCH (sort) (id: new position)
+- [x] `/:id` UPDATE (name, unit)
 - [x] `/:id` DELETE
 ## /units
 - [x] `/` GET
