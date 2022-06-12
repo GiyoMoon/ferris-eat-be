@@ -94,11 +94,11 @@ where
         let payload = from_utf8(decoded).map_err(|_| AuthError::InvalidToken)?;
         let claims: Claims = serde_json::from_str(payload).map_err(|_| AuthError::InvalidToken)?;
 
-        // Get the user from the database
+        // Get the user password from the database
         let Extension(pool) = Extension::<PgPool>::from_request(req)
             .await
             .expect("`DatabaseConnection` extension is missing");
-        let user = sqlx::query!(r#"SELECT * FROM "user" WHERE id = $1"#, claims.sub)
+        let user = sqlx::query!(r#"SELECT password FROM "user" WHERE id = $1"#, claims.sub)
             .fetch_one(&pool)
             .await
             .map_err(|_| AuthError::InvalidToken)?;
