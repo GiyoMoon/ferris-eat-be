@@ -28,7 +28,9 @@ pub fn routes(pool: PgPool) -> Router {
     let ingredients_api = Router::new()
         .route(
             "/",
-            get(api::ingredients::get_all).post(api::ingredients::create),
+            get(api::ingredients::get_all)
+                .post(api::ingredients::create)
+                .patch(api::ingredients::sort),
         )
         .route(
             "/:id",
