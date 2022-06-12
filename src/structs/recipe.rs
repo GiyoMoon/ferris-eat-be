@@ -37,8 +37,7 @@ pub struct IngredientForRecipeQuery {
     pub name: String,
     pub unit: String,
     pub quantity: i32,
-    pub order_id: i32,
-    pub order_after: i32,
+    pub sort: i32,
 }
 
 #[derive(Serialize)]
@@ -54,17 +53,8 @@ pub struct RecipeGetDetailRes {
 
 impl RecipeGetDetailRes {
     pub fn new(recipe: RecipeQuery, mut ingredients: Vec<IngredientForRecipeQuery>) -> Self {
-        let mut sorted = Vec::new();
-        let mut id = 0;
-        for _ in 0..ingredients.len() {
-            if let Some(index) = ingredients.iter().position(|item| item.order_after == id) {
-                let item = ingredients.swap_remove(index);
-                id = item.order_id;
-                sorted.push(item);
-            }
-        }
-
-        let ingredients = sorted
+        ingredients.sort_by(|a, b| a.sort.cmp(&b.sort));
+        let ingredients = ingredients
             .into_iter()
             .map(|i| IngredientWithQuantity {
                 id: i.id,

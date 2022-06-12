@@ -83,6 +83,15 @@ pub async fn create(
     })?;
 
     for ingredient in payload.ingredients.iter() {
+        sqlx::query!(r#"SELECT id FROM ingredient where id = $1"#, ingredient.id)
+            .fetch_one(pool)
+            .await
+            .map_err(|_| {
+                (
+                    StatusCode::NOT_FOUND,
+                    format!("Ingredient with id {} not found", ingredient.id).to_string(),
+                )
+            })?;
         sqlx::query!(
             r#"
             INSERT INTO ingredient_quantity ( recipe_id, ingredient_id, quantity )
@@ -134,9 +143,8 @@ pub async fn get(
     let ingredients: Vec<IngredientForRecipeQuery> = sqlx::query_as!(
         IngredientForRecipeQuery,
         r#"
-        SELECT i.id, i.name, u.name as unit, inq.quantity, ins.order_id, ins.order_after FROM ingredient_quantity as inq
+        SELECT i.id, i.name, u.name as unit, inq.quantity, i.sort FROM ingredient_quantity as inq
         INNER JOIN ingredient as i ON inq.ingredient_id = i.id
-        INNER JOIN ingredient_sort as ins ON i.id = ins.ingredient_id
         INNER JOIN unit as u ON i.unit_id = u.id
         WHERE inq.recipe_id = $1
         "#,

@@ -112,6 +112,65 @@
     },
     "query": "SELECT * FROM \"user\" WHERE username = $1"
   },
+  "33af80a2cbabd10da0198acbb1706ffa4245759686f1374c3c2b1659a8754828": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "SELECT id FROM ingredient where id = $1"
+  },
+  "402f97d0976c8c840b1814a3bab46998b83b3731f15187c8dbd3e8f173a28dc5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 3,
+          "type_info": "Timestamp"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n        SELECT id, name, created_at, updated_at FROM recipe\n        WHERE id = $1 AND user_id = $2\n        "
+  },
   "491e42071775144d2778633cd26a234dcd355f1e6c70c91c9b86ecfc7eb1cf44": {
     "describe": {
       "columns": [
@@ -339,6 +398,50 @@
       }
     },
     "query": "UPDATE \"user\" SET alias = $1, email = $2 WHERE id = $3"
+  },
+  "e2be2065661f1645fad74ba10c809f215c03604e44e8a559d5aac584c0b3c2bd": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "unit",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "quantity",
+          "ordinal": 3,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sort",
+          "ordinal": 4,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        SELECT i.id, i.name, u.name as unit, inq.quantity, i.sort FROM ingredient_quantity as inq\n        INNER JOIN ingredient as i ON inq.ingredient_id = i.id\n        INNER JOIN unit as u ON i.unit_id = u.id\n        WHERE inq.recipe_id = $1\n        "
   },
   "fa37118cc7541d37c2f314df9ddd7a892d6c4c03d6d428ce739cde9570bdac9e": {
     "describe": {
