@@ -13,9 +13,9 @@
 - [x] PUT `/:id` UPDATE (name, ingredients(with unit count))
 - [x] DELETE `/:id`
 ## /ingredients
-- [ ] `/` GET (maybe pageinate later, but hard with sorting)
-- [ ] `/` POST (name, unit)
+- [x] `/` GET (maybe pageinate later, but hard with sorting)
+- [x] `/` POST (name, unit)
 - [ ] `/:id` UPDATE (name, unit)
-- [ ] `/:id` DELETE
+- [x] `/:id` DELETE
 ## /units
 - [x] `/` GET

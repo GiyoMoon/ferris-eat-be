@@ -1,6 +1,6 @@
 use crate::api;
 use axum::{
-    routing::{get, patch, post, put},
+    routing::{delete, get, patch, post, put},
     Extension, Router,
 };
 use sqlx::PgPool;
@@ -26,7 +26,11 @@ pub fn routes(pool: PgPool) -> Router {
         .layer(Extension(pool.clone()));
 
     let ingredients_api = Router::new()
-        .route("/", get(api::ingredients::get_all))
+        .route(
+            "/",
+            get(api::ingredients::get_all).post(api::ingredients::create),
+        )
+        .route("/:id", delete(api::ingredients::delete))
         .layer(Extension(pool.clone()));
 
     let units_api = Router::new()
