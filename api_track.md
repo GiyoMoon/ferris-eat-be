@@ -10,8 +10,8 @@
 - [x] GET `/` (maybe paginate later)
 - [x] POST `/` (name, ingredients(with unit quantity))
 - [x] GET `/:id` detail (with ingredients)
-- [ ] PUT `/:id` UPDATE (name, ingredients(with unit count))
-- [ ] DELETE `/:id`
+- [x] PUT `/:id` UPDATE (name, ingredients(with unit count))
+- [x] DELETE `/:id`
 ## /ingredients
 - [ ] `/` GET (maybe pageinate later, but hard with sorting)
 - [ ] `/` POST (name, unit)

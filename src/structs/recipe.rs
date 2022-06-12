@@ -16,11 +16,11 @@ pub struct RecipeGetRes {
 #[derive(Deserialize)]
 pub struct RecipeCreateReq {
     pub name: String,
-    pub ingredients: Vec<RecipeCreateIngredients>,
+    pub ingredients: Vec<RecipeIngredientWithQuantity>,
 }
 
 #[derive(Deserialize)]
-pub struct RecipeCreateIngredients {
+pub struct RecipeIngredientWithQuantity {
     pub id: i32,
     pub quantity: i32,
 }
@@ -86,4 +86,10 @@ pub struct IngredientWithQuantity {
     pub name: String,
     pub unit: String,
     pub quantity: i32,
+}
+
+#[derive(Deserialize)]
+pub struct RecipeUpdateReq {
+    pub name: Option<String>,
+    pub ingredients: Option<Vec<RecipeIngredientWithQuantity>>,
 }

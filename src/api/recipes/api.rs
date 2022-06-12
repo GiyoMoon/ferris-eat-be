@@ -1,7 +1,8 @@
 use crate::{
-    api::auth::Claims,
+    api::{auth::Claims, recipes::service::save_recipe_ingredients},
     structs::recipe::{
         IngredientForRecipeQuery, RecipeCreateReq, RecipeGetDetailRes, RecipeGetRes, RecipeQuery,
+        RecipeUpdateReq,
     },
 };
 use axum::{
@@ -10,6 +11,7 @@ use axum::{
     Extension, Json,
 };
 use sqlx::PgPool;
+use time::PrimitiveDateTime;
 use time_3::OffsetDateTime;
 
 #[axum_macros::debug_handler]
@@ -78,39 +80,11 @@ pub async fn create(
     .map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Error while creating recipe".to_string(),
+            "Failed creating recipe".to_string(),
         )
     })?;
 
-    for ingredient in payload.ingredients.iter() {
-        sqlx::query!(r#"SELECT id FROM ingredient where id = $1"#, ingredient.id)
-            .fetch_one(pool)
-            .await
-            .map_err(|_| {
-                (
-                    StatusCode::NOT_FOUND,
-                    format!("Ingredient with id {} not found", ingredient.id).to_string(),
-                )
-            })?;
-        sqlx::query!(
-            r#"
-            INSERT INTO ingredient_quantity ( recipe_id, ingredient_id, quantity )
-            VALUES ( $1, $2, $3 )
-            RETURNING id
-            "#,
-            insert_result.id,
-            ingredient.id,
-            ingredient.quantity
-        )
-        .fetch_one(pool)
-        .await
-        .map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Error while creating recipe".to_string(),
-            )
-        })?;
-    }
+    save_recipe_ingredients(insert_result.id, payload.ingredients, pool).await?;
 
     Ok(StatusCode::CREATED)
 }
@@ -135,7 +109,7 @@ pub async fn get(
     .map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Error while getting recipe".to_string(),
+            "Failed getting recipe".to_string(),
         )
     })?
     .ok_or((StatusCode::NOT_FOUND, "Recipe not found".to_string()))?;
@@ -155,7 +129,7 @@ pub async fn get(
     .map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Error while getting recipe".to_string(),
+            "Failed getting recipe".to_string(),
         )
     })?;
 
@@ -163,4 +137,94 @@ pub async fn get(
         StatusCode::OK,
         Json(RecipeGetDetailRes::new(recipe, ingredients)),
     ))
+}
+
+#[axum_macros::debug_handler]
+pub async fn update(
+    claims: Claims,
+    Path(id): Path<i32>,
+    extract::Json(payload): extract::Json<RecipeUpdateReq>,
+    Extension(ref pool): Extension<PgPool>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    sqlx::query!(
+        r#"SELECT id FROM recipe WHERE id = $1 AND user_id = $2"#,
+        id,
+        claims.get_sub()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed updating recipe".to_string(),
+        )
+    })?
+    .ok_or((StatusCode::NOT_FOUND, "Recipe not found".to_string()))?;
+
+    if let Some(name) = payload.name {
+        let updated = time::OffsetDateTime::now_utc();
+        sqlx::query!(
+            r#"UPDATE recipe SET name = $1, updated_at = $2 WHERE id = $3"#,
+            name,
+            PrimitiveDateTime::new(updated.date(), updated.time()),
+            id,
+        )
+        .execute(pool)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed updating recipe".to_string(),
+            )
+        })?;
+    }
+
+    if let Some(ingredients) = payload.ingredients {
+        {
+            sqlx::query!(
+                r#"DELETE FROM ingredient_quantity WHERE recipe_id = $1"#,
+                id
+            )
+            .execute(pool)
+            .await
+            .map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed updating recipe".to_string(),
+                )
+            })?;
+
+            save_recipe_ingredients(id, ingredients, pool).await?;
+        }
+    }
+
+    Ok(StatusCode::OK)
+}
+
+#[axum_macros::debug_handler]
+pub async fn delete(
+    claims: Claims,
+    Path(id): Path<i32>,
+    Extension(ref pool): Extension<PgPool>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    sqlx::query!(
+        r#"
+        DELETE FROM recipe
+        WHERE id = $1 AND user_id = $2
+        RETURNING id
+        "#,
+        id,
+        claims.get_sub()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed deleting recipe".to_string(),
+        )
+    })?
+    .ok_or((StatusCode::NOT_FOUND, "Recipe not found".to_string()))?;
+
+    Ok(StatusCode::OK)
 }

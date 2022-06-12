@@ -31,7 +31,7 @@ pub async fn register(
     .map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Error while creating user".to_string(),
+            "Failed creating user".to_string(),
         )
     })?;
 
@@ -54,7 +54,7 @@ pub async fn register(
     let hashed_password = Password::from_plain(payload.password).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Error while hashing the password".to_string(),
+            "Failed hashing the password".to_string(),
         )
     })?;
 
@@ -75,7 +75,7 @@ pub async fn register(
     .map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Error while saving user".to_string(),
+            "Failed creating user".to_string(),
         )
     })?;
 
@@ -173,10 +173,12 @@ pub async fn update(
         None => (),
     }
 
+    let updated = time::OffsetDateTime::now_utc();
     sqlx::query!(
-        r#"UPDATE "user" SET alias = $1, email = $2 WHERE id = $3"#,
+        r#"UPDATE "user" SET alias = $1, email = $2, updated_at = $3 WHERE id = $4"#,
         payload.alias,
         payload.email.to_lowercase(),
+        time::PrimitiveDateTime::new(updated.date(), updated.time()),
         claims.get_sub(),
     )
     .execute(pool)
@@ -214,13 +216,15 @@ pub async fn change_password(
     let hashed_password = Password::from_plain(payload.new_password).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Error while hashing the password".to_string(),
+            "Failed hashing the password".to_string(),
         )
     })?;
 
+    let updated = time::OffsetDateTime::now_utc();
     sqlx::query!(
-        r#"UPDATE "user" SET password = $1 WHERE id = $2"#,
+        r#"UPDATE "user" SET password = $1, updated_at = $2 WHERE id = $3"#,
         hashed_password.get(),
+        time::PrimitiveDateTime::new(updated.date(), updated.time()),
         claims.get_sub(),
     )
     .execute(pool)
@@ -228,7 +232,7 @@ pub async fn change_password(
     .map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed updating user".to_string(),
+            "Failed changing the password".to_string(),
         )
     })?;
 
