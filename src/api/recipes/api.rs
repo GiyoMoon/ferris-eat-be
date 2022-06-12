@@ -1,8 +1,14 @@
 use crate::{
     api::auth::Claims,
-    structs::recipe::{RecipeCreateReq, RecipeGetRes},
+    structs::recipe::{
+        IngredientForRecipeQuery, RecipeCreateReq, RecipeGetDetailRes, RecipeGetRes, RecipeQuery,
+    },
 };
-use axum::{extract, http::StatusCode, Extension, Json};
+use axum::{
+    extract::{self, Path},
+    http::StatusCode,
+    Extension, Json,
+};
 use sqlx::PgPool;
 use time_3::OffsetDateTime;
 
@@ -98,4 +104,55 @@ pub async fn create(
     }
 
     Ok(StatusCode::CREATED)
+}
+
+#[axum_macros::debug_handler]
+pub async fn get(
+    claims: Claims,
+    Path(id): Path<i32>,
+    Extension(ref pool): Extension<PgPool>,
+) -> Result<(StatusCode, Json<RecipeGetDetailRes>), (StatusCode, String)> {
+    let recipe: RecipeQuery = sqlx::query_as!(
+        RecipeQuery,
+        r#"
+        SELECT id, name, created_at, updated_at FROM recipe
+        WHERE id = $1 AND user_id = $2
+        "#,
+        id,
+        claims.get_sub()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error while getting recipe".to_string(),
+        )
+    })?
+    .ok_or((StatusCode::NOT_FOUND, "Recipe not found".to_string()))?;
+
+    let ingredients: Vec<IngredientForRecipeQuery> = sqlx::query_as!(
+        IngredientForRecipeQuery,
+        r#"
+        SELECT i.id, i.name, u.name as unit, inq.quantity, ins.order_id, ins.order_after FROM ingredient_quantity as inq
+        INNER JOIN ingredient as i ON inq.ingredient_id = i.id
+        INNER JOIN ingredient_sort as ins ON i.id = ins.ingredient_id
+        INNER JOIN unit as u ON i.unit_id = u.id
+        WHERE inq.recipe_id = $1
+        "#,
+        recipe.id
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error while getting recipe".to_string(),
+        )
+    })?;
+
+    Ok((
+        StatusCode::OK,
+        Json(RecipeGetDetailRes::new(recipe, ingredients)),
+    ))
 }

@@ -9,7 +9,7 @@
 ## /recipes
 - [x] GET `/` (maybe paginate later)
 - [x] POST `/` (name, ingredients(with unit quantity))
-- [ ] GET `/:id` detail (with ingredients) (maybe paginate later)
+- [x] GET `/:id` detail (with ingredients)
 - [ ] PUT `/:id` UPDATE (name, ingredients(with unit count))
 - [ ] DELETE `/:id`
 ## /ingredients
