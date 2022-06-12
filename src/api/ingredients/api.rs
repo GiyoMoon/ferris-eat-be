@@ -253,17 +253,15 @@ pub async fn sort(
 
     if payload.new_sort < 1 {
         payload.new_sort = 1;
-    } else {
-        if let Some(max) = max {
-            // Ingredient is already at last position, no need to sort
-            if payload.new_sort > max.sort + 1 && old_sort == max.sort {
-                return Err((StatusCode::BAD_REQUEST, "Nothing to sort".to_string()));
-            } else if payload.new_sort > max.sort + 1 {
-                payload.new_sort = max.sort + 1;
-            }
-        } else {
-            payload.new_sort = 1;
+    } else if let Some(max) = max {
+        // Ingredient is already at last position, no need to sort
+        if payload.new_sort > max.sort + 1 && old_sort == max.sort {
+            return Err((StatusCode::BAD_REQUEST, "Nothing to sort".to_string()));
+        } else if payload.new_sort > max.sort + 1 {
+            payload.new_sort = max.sort + 1;
         }
+    } else {
+        payload.new_sort = 1;
     }
 
     if payload.new_sort == old_sort {

@@ -40,7 +40,7 @@ pub fn routes(pool: PgPool) -> Router {
 
     let units_api = Router::new()
         .route("/", get(api::units::get_all))
-        .layer(Extension(pool.clone()));
+        .layer(Extension(pool));
 
     Router::new()
         .nest("/api/users", users_api)

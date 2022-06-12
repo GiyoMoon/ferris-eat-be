@@ -14,15 +14,11 @@ use sqlx::PgPool;
 use std::str::from_utf8;
 use uuid::Uuid;
 
-static SECRET: Lazy<String> = Lazy::new(|| {
-    let secret = std::env::var("SECRET").expect("SECRET env var not found");
-    secret
-});
+static SECRET: Lazy<String> =
+    Lazy::new(|| std::env::var("SECRET").expect("SECRET env var not found"));
 
-static REFRESH_SECRET: Lazy<String> = Lazy::new(|| {
-    let secret = std::env::var("REFRESH_SECRET").expect("REFRESH_SECRET env var not found");
-    secret
-});
+static REFRESH_SECRET: Lazy<String> =
+    Lazy::new(|| std::env::var("REFRESH_SECRET").expect("REFRESH_SECRET env var not found"));
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Claims {
@@ -56,7 +52,7 @@ where
         // Validate and decode the jwt
         let token_data = decode::<Claims>(
             bearer.token(),
-            &DecodingKey::from_secret(&SECRET.as_ref()),
+            &DecodingKey::from_secret(SECRET.as_ref()),
             &Validation::default(),
         )
         .map_err(|_| AuthError::InvalidToken)?;
@@ -87,7 +83,7 @@ where
         // Get the jwt payload and decode it
         let base64_payload = bearer
             .token()
-            .split(".")
+            .split('.')
             .nth(1)
             .ok_or(AuthError::InvalidToken)?;
         let decoded = &base64::decode(base64_payload).map_err(|_| AuthError::InvalidToken)?[..];

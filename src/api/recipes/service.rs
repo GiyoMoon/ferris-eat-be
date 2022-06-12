@@ -14,7 +14,7 @@ pub async fn save_recipe_ingredients(
             .map_err(|_| {
                 (
                     StatusCode::NOT_FOUND,
-                    format!("Ingredient with id {} not found", ingredient.id).to_string(),
+                    format!("Ingredient with id {} not found", ingredient.id),
                 )
             })?;
         sqlx::query!(

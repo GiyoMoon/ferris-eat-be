@@ -9,15 +9,11 @@ use sqlx::PgPool;
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
-static SECRET: Lazy<String> = Lazy::new(|| {
-    let secret = std::env::var("SECRET").expect("SECRET env var not found");
-    secret
-});
+static SECRET: Lazy<String> =
+    Lazy::new(|| std::env::var("SECRET").expect("SECRET env var not found"));
 
-static REFRESH_SECRET: Lazy<String> = Lazy::new(|| {
-    let secret = std::env::var("REFRESH_SECRET").expect("REFRESH_SECRET env var not found");
-    secret
-});
+static REFRESH_SECRET: Lazy<String> =
+    Lazy::new(|| std::env::var("REFRESH_SECRET").expect("REFRESH_SECRET env var not found"));
 
 pub fn get_tokens(uuid: Uuid, password: String) -> Result<Tokens, (StatusCode, String)> {
     let token = encode(
@@ -78,10 +74,8 @@ pub async fn get_user_by_uuid(
     uuid: Uuid,
     pool: &PgPool,
 ) -> Result<UserModel, (StatusCode, String)> {
-    Ok(
-        sqlx::query_as!(UserModel, r#"SELECT * FROM "user" WHERE id = $1"#, uuid)
-            .fetch_one(pool)
-            .await
-            .map_err(|_| (StatusCode::UNAUTHORIZED, "Failed getting user".to_string()))?,
-    )
+    sqlx::query_as!(UserModel, r#"SELECT * FROM "user" WHERE id = $1"#, uuid)
+        .fetch_one(pool)
+        .await
+        .map_err(|_| (StatusCode::UNAUTHORIZED, "Failed getting user".to_string()))
 }
