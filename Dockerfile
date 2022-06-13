@@ -13,6 +13,7 @@ RUN cargo build --release
 COPY sqlx-data.json .
 COPY ./src ./src/
 RUN cargo build --release
+RUN musl-strip ./target/x86_64-unknown-linux-musl/release/ferris-eat
 
 FROM scratch
 
