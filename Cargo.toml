@@ -1,9 +1,13 @@
 [package]
-name = "ferris_eat"
+name = "ferris-eat"
 version = "0.1.0"
 authors = ["GiyoMoon <giyomoon@gmail.com>"]
 edition = "2021"
 publish = false
+
+[profile.release]
+lto = true
+codegen-units = 1
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -1,0 +1,34 @@
+name: Docker build
+on: [push]
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/giyomoon/ferris-eat-be
+          tags: |
+            type=ref,event=branch
+            type=raw,value={{branch}}-{{sha}}
+          flavor: |
+            latest=${{ endsWith(github.ref, github.event.repository.default_branch) }}
+      -
+        name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      -
+        name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}

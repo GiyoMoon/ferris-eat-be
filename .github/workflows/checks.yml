@@ -1,7 +1,5 @@
 name: Rustfmt and Clippy check
-
 on: [push, pull_request]
-
 jobs:
   check:
     name: Check
