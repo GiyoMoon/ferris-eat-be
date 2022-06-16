@@ -11,8 +11,7 @@ use axum::{
     Extension, Json,
 };
 use sqlx::PgPool;
-use time::PrimitiveDateTime;
-use time_3::OffsetDateTime;
+use time::{OffsetDateTime, PrimitiveDateTime};
 
 #[axum_macros::debug_handler]
 pub async fn get_all(
@@ -45,14 +44,8 @@ pub async fn get_all(
                 .map(|record| RecipeGetRes {
                     id: record.id,
                     name: record.name,
-                    created_at: OffsetDateTime::from_unix_timestamp(
-                        record.created_at.assume_utc().unix_timestamp(),
-                    )
-                    .unwrap(),
-                    updated_at: OffsetDateTime::from_unix_timestamp(
-                        record.updated_at.assume_utc().unix_timestamp(),
-                    )
-                    .unwrap(),
+                    created_at: record.created_at.assume_utc(),
+                    updated_at: record.updated_at.assume_utc(),
                     ingredients: record.ingredients.unwrap_or(0),
                 })
                 .collect(),
@@ -162,7 +155,7 @@ pub async fn update(
     .ok_or((StatusCode::NOT_FOUND, "Recipe not found".to_string()))?;
 
     if let Some(name) = payload.name {
-        let updated = time::OffsetDateTime::now_utc();
+        let updated = OffsetDateTime::now_utc();
         sqlx::query!(
             r#"UPDATE recipe SET name = $1, updated_at = $2 WHERE id = $3"#,
             name,

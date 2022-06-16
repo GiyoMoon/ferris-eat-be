@@ -49,10 +49,6 @@ version = "^0"
 features = [ "runtime-tokio-rustls", "postgres", "uuid", "time", "offline" ]
 
 [dependencies.time]
-version = "^0.2"
-
-[dependencies.time-3]
-package = "time"
 version = "^0.3"
 features = [ "serde", "serde-well-known" ]
 
@@ -61,7 +57,7 @@ version = "^1"
 features = ["macros", "rt-multi-thread"]
 
 [dependencies.uuid]
-version = "^0"
+version = "^1"
 features = [ "v4", "serde" ]
 
 [dependencies.validator]

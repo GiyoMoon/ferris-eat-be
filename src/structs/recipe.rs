@@ -1,14 +1,13 @@
 use serde::{Deserialize, Serialize};
-use time::PrimitiveDateTime;
-use time_3::OffsetDateTime;
+use time::{OffsetDateTime, PrimitiveDateTime};
 
 #[derive(Serialize)]
 pub struct RecipeGetRes {
     pub id: i32,
     pub name: String,
-    #[serde(with = "time_3::serde::rfc3339")]
+    #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
-    #[serde(with = "time_3::serde::rfc3339")]
+    #[serde(with = "time::serde::rfc3339")]
     pub updated_at: OffsetDateTime,
     pub ingredients: i64,
 }
@@ -44,9 +43,9 @@ pub struct IngredientForRecipeQuery {
 pub struct RecipeGetDetailRes {
     pub id: i32,
     pub name: String,
-    #[serde(with = "time_3::serde::rfc3339")]
+    #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
-    #[serde(with = "time_3::serde::rfc3339")]
+    #[serde(with = "time::serde::rfc3339")]
     pub updated_at: OffsetDateTime,
     pub ingredients: Vec<IngredientWithQuantity>,
 }
@@ -67,14 +66,8 @@ impl RecipeGetDetailRes {
         RecipeGetDetailRes {
             id: recipe.id,
             name: recipe.name,
-            created_at: OffsetDateTime::from_unix_timestamp(
-                recipe.created_at.assume_utc().unix_timestamp(),
-            )
-            .unwrap(),
-            updated_at: OffsetDateTime::from_unix_timestamp(
-                recipe.updated_at.assume_utc().unix_timestamp(),
-            )
-            .unwrap(),
+            created_at: recipe.created_at.assume_utc(),
+            updated_at: recipe.updated_at.assume_utc(),
             ingredients,
         }
     }
