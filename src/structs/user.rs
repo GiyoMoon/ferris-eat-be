@@ -2,7 +2,7 @@ use bcrypt::{BcryptError, BcryptResult};
 use fancy_regex::Regex;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use time::PrimitiveDateTime;
+use time::{PrimitiveDateTime, OffsetDateTime};
 use uuid::Uuid;
 use validator::{Validate, ValidationError};
 
@@ -72,6 +72,10 @@ pub struct UserMeRes {
     pub username: String,
     pub alias: String,
     pub email: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub updated_at: OffsetDateTime
 }
 
 impl From<UserModel> for UserMeRes {
@@ -81,6 +85,8 @@ impl From<UserModel> for UserMeRes {
             username: a.username,
             alias: a.alias,
             email: a.email,
+            created_at: a.created_at.assume_utc(),
+            updated_at: a.updated_at.assume_utc(),
         }
     }
 }
