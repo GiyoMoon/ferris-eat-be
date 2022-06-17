@@ -22,7 +22,7 @@ pub async fn get_all(
 ) -> Result<(StatusCode, Json<Vec<IngredientsGetRes>>), (StatusCode, String)> {
     let units = sqlx::query!(
         r#"
-        SELECT i.id, i.name, u.name as unit, i.sort FROM ingredient AS i
+        SELECT i.id, i.name, u.name AS unit, i.sort FROM ingredient AS i
         INNER JOIN unit AS u ON i.unit_id = u.id
         WHERE i.user_id = $1
         ORDER BY i.sort
@@ -101,7 +101,7 @@ pub async fn create(
     };
 
     let ingredients_after = sqlx::query!(
-        r#"SELECT id, sort FROM ingredient where sort >= $1 AND user_id = $2 ORDER BY sort"#,
+        r#"SELECT id, sort FROM ingredient WHERE sort >= $1 AND user_id = $2 ORDER BY sort"#,
         sort,
         claims.get_sub()
     )
@@ -270,7 +270,7 @@ pub async fn sort(
 
     if payload.new_sort < old_sort {
         let add_sort = sqlx::query!(
-            r#"SELECT id, sort FROM ingredient where sort >= $1 AND sort < $2 AND user_id = $3 ORDER BY sort"#,
+            r#"SELECT id, sort FROM ingredient WHERE sort >= $1 AND sort < $2 AND user_id = $3 ORDER BY sort"#,
             payload.new_sort,
             old_sort,
             claims.get_sub()
@@ -303,7 +303,7 @@ pub async fn sort(
 
     if payload.new_sort > old_sort {
         let subtract_sort = sqlx::query!(
-            r#"SELECT id, sort FROM ingredient where sort > $1 AND sort < $2 AND user_id = $3 ORDER BY sort"#,
+            r#"SELECT id, sort FROM ingredient WHERE sort > $1 AND sort < $2 AND user_id = $3 ORDER BY sort"#,
             old_sort,
             payload.new_sort,
             claims.get_sub()
@@ -387,7 +387,7 @@ pub async fn delete(
         })?;
 
     let ingredients_after = sqlx::query!(
-        r#"SELECT id, sort FROM ingredient where sort > $1 AND user_id = $2 ORDER BY sort"#,
+        r#"SELECT id, sort FROM ingredient WHERE sort > $1 AND user_id = $2 ORDER BY sort"#,
         to_delete.sort,
         claims.get_sub()
     )

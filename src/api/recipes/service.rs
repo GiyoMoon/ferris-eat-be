@@ -8,7 +8,7 @@ pub async fn save_recipe_ingredients(
     pool: &PgPool,
 ) -> Result<(), (StatusCode, String)> {
     for ingredient in ingredients.iter() {
-        sqlx::query!(r#"SELECT id FROM ingredient where id = $1"#, ingredient.id)
+        sqlx::query!(r#"SELECT id FROM ingredient WHERE id = $1"#, ingredient.id)
             .fetch_one(pool)
             .await
             .map_err(|_| {

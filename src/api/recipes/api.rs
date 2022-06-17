@@ -20,10 +20,10 @@ pub async fn get_all(
 ) -> Result<(StatusCode, Json<Vec<RecipeGetRes>>), (StatusCode, String)> {
     let recipes = sqlx::query!(
         r#"
-        SELECT recipe.id,recipe. name, recipe.created_at,recipe. updated_at, count(iq.id) AS ingredients
+        SELECT recipe.id, recipe.name, recipe.created_at, recipe.updated_at, count(iq.id) AS ingredients
         FROM recipe
         LEFT OUTER JOIN ingredient_quantity AS iq ON recipe.id = iq.recipe_id
-        WHERE recipe.user_id = $1 group by recipe.id
+        WHERE recipe.user_id = $1 GROUP BY recipe.id
         "#,
         claims.get_sub()
     )
@@ -107,12 +107,12 @@ pub async fn get(
     })?
     .ok_or((StatusCode::NOT_FOUND, "Recipe not found".to_string()))?;
 
-    let ingredients: Vec<IngredientForRecipeQuery> = sqlx::query_as!(
+    let ingredients = sqlx::query_as!(
         IngredientForRecipeQuery,
         r#"
-        SELECT i.id, i.name, u.name as unit, inq.quantity, i.sort FROM ingredient_quantity as inq
-        INNER JOIN ingredient as i ON inq.ingredient_id = i.id
-        INNER JOIN unit as u ON i.unit_id = u.id
+        SELECT i.id, i.name, u.name AS unit, inq.quantity, i.sort FROM ingredient_quantity AS inq
+        INNER JOIN ingredient AS i ON inq.ingredient_id = i.id
+        INNER JOIN unit AS u ON i.unit_id = u.id
         WHERE inq.recipe_id = $1
         "#,
         recipe.id
