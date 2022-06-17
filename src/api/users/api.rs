@@ -9,7 +9,6 @@ use crate::{
 };
 use axum::{extract, http::StatusCode, Extension, Json};
 use sqlx::PgPool;
-use time::{OffsetDateTime, PrimitiveDateTime};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -174,12 +173,10 @@ pub async fn update(
         None => (),
     }
 
-    let updated = OffsetDateTime::now_utc();
     sqlx::query!(
-        r#"UPDATE "user" SET alias = $1, email = $2, updated_at = $3 WHERE id = $4"#,
+        r#"UPDATE "user" SET alias = $1, email = $2 WHERE id = $3"#,
         payload.alias,
         payload.email.to_lowercase(),
-        PrimitiveDateTime::new(updated.date(), updated.time()),
         claims.get_sub(),
     )
     .execute(pool)
@@ -221,11 +218,9 @@ pub async fn change_password(
         )
     })?;
 
-    let updated = OffsetDateTime::now_utc();
     sqlx::query!(
-        r#"UPDATE "user" SET password = $1, updated_at = $2 WHERE id = $3"#,
+        r#"UPDATE "user" SET password = $1 WHERE id = $2"#,
         hashed_password.get(),
-        PrimitiveDateTime::new(updated.date(), updated.time()),
         claims.get_sub(),
     )
     .execute(pool)

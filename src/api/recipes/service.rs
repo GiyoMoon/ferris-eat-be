@@ -4,7 +4,7 @@ use sqlx::PgPool;
 
 pub async fn save_recipe_ingredients(
     recipe_id: i32,
-    ingredients: Vec<RecipeIngredientWithQuantity>,
+    ingredients: &[RecipeIngredientWithQuantity],
     pool: &PgPool,
 ) -> Result<(), (StatusCode, String)> {
     for ingredient in ingredients.iter() {

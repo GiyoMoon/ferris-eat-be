@@ -2,7 +2,7 @@ use bcrypt::{BcryptError, BcryptResult};
 use fancy_regex::Regex;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use time::{PrimitiveDateTime, OffsetDateTime};
+use time::{OffsetDateTime, PrimitiveDateTime};
 use uuid::Uuid;
 use validator::{Validate, ValidationError};
 
@@ -75,7 +75,7 @@ pub struct UserMeRes {
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
-    pub updated_at: OffsetDateTime
+    pub updated_at: OffsetDateTime,
 }
 
 impl From<UserModel> for UserMeRes {

@@ -77,7 +77,7 @@ pub async fn create(
         )
     })?;
 
-    save_recipe_ingredients(insert_result.id, payload.ingredients, pool).await?;
+    save_recipe_ingredients(insert_result.id, &payload.ingredients, pool).await?;
 
     Ok(StatusCode::CREATED)
 }
@@ -154,25 +154,19 @@ pub async fn update(
     })?
     .ok_or((StatusCode::NOT_FOUND, "Recipe not found".to_string()))?;
 
-    if let Some(name) = payload.name {
-        let updated = OffsetDateTime::now_utc();
-        sqlx::query!(
-            r#"UPDATE recipe SET name = $1, updated_at = $2 WHERE id = $3"#,
-            name,
-            PrimitiveDateTime::new(updated.date(), updated.time()),
-            id,
-        )
-        .execute(pool)
-        .await
-        .map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed updating recipe".to_string(),
-            )
-        })?;
+    if let Some(ref name) = payload.name {
+        sqlx::query!(r#"UPDATE recipe SET name = $1 WHERE id = $2"#, name, id,)
+            .execute(pool)
+            .await
+            .map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed updating recipe".to_string(),
+                )
+            })?;
     }
 
-    if let Some(ingredients) = payload.ingredients {
+    if let Some(ref ingredients) = payload.ingredients {
         {
             sqlx::query!(
                 r#"DELETE FROM ingredient_quantity WHERE recipe_id = $1"#,
@@ -189,6 +183,23 @@ pub async fn update(
 
             save_recipe_ingredients(id, ingredients, pool).await?;
         }
+    }
+
+    if payload.name.is_none() && payload.ingredients.is_some() {
+        let updated = OffsetDateTime::now_utc();
+        sqlx::query!(
+            r#"UPDATE recipe SET updated_at = $1 WHERE id = $2"#,
+            PrimitiveDateTime::new(updated.date(), updated.time()),
+            id,
+        )
+        .execute(pool)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed updating recipe".to_string(),
+            )
+        })?;
     }
 
     Ok(StatusCode::OK)
