@@ -94,6 +94,19 @@
     },
     "query": "SELECT * FROM \"user\" WHERE id = $1"
   },
+  "0fe31465f4a6027a6812eac2c3c8440d7bf1a09fef2dbf3744b7d2a16ac6801c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int4"
+        ]
+      }
+    },
+    "query": "UPDATE recipe SET name = $1 WHERE id = $2"
+  },
   "133cd80638ea4e8fd1ccbc0f53715249fd02737e659b19a3d8510e5626163674": {
     "describe": {
       "columns": [
@@ -299,6 +312,19 @@
       }
     },
     "query": "\n        DELETE FROM recipe\n        WHERE id = $1 AND user_id = $2\n        RETURNING id\n        "
+  },
+  "3bd15169c6d815ede9e0cc22b5eca0c1b99eaeb9cef376d28df9fc7e44d9a985": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamp",
+          "Int4"
+        ]
+      }
+    },
+    "query": "UPDATE recipe SET updated_at = $1 WHERE id = $2"
   },
   "402f97d0976c8c840b1814a3bab46998b83b3731f15187c8dbd3e8f173a28dc5": {
     "describe": {
@@ -511,21 +537,6 @@
     },
     "query": "INSERT INTO ingredient ( name, unit_id, sort, user_id ) VALUES ( $1, $2, $3, $4 )"
   },
-  "851bb59d9db16f86b4364b63ed51b40a8ea9e766728df26262f2c354d151735a": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Varchar",
-          "Timestamp",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE \"user\" SET alias = $1, email = $2, updated_at = $3 WHERE id = $4"
-  },
   "8f18db3d72e7536df5eecfa54e433c5a080b7b8ee2988d4a2b31100eb82b81d5": {
     "describe": {
       "columns": [
@@ -583,6 +594,19 @@
     },
     "query": "SELECT * FROM \"user\" WHERE username = $1 OR email = $2"
   },
+  "929b241ed31c7ac2c23d46bf250f4104003ddae11b28aad0d82327ff2c84f0f3": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE \"user\" SET password = $1 WHERE id = $2"
+  },
   "9bf62b86c8fa0a43308e20da2b9d85d0bd58881a1d6bdfe2b6d9fea06e495e35": {
     "describe": {
       "columns": [
@@ -621,20 +645,6 @@
       }
     },
     "query": "DELETE FROM ingredient_quantity WHERE recipe_id = $1"
-  },
-  "9dba1e6844530f855cd697420db3d65f67106545dfd7449407769f05c068e82c": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Timestamp",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE \"user\" SET password = $1, updated_at = $2 WHERE id = $3"
   },
   "a493a0e83b37b3b10e1f223ad1ba39aad762909e88b9f48e4a545ee1477e9d0e": {
     "describe": {
@@ -693,6 +703,20 @@
       }
     },
     "query": "UPDATE ingredient SET sort = $1 WHERE id = $2"
+  },
+  "bce8e943123094e7b039cfd374a0b84214712cafb8d21be7e66c48b6bf848ac5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE \"user\" SET alias = $1, email = $2 WHERE id = $3"
   },
   "bfc61771dc7048a5f178058fc748bcc861d1b999ccca68246eded00e4124d61c": {
     "describe": {
@@ -818,6 +842,44 @@
     },
     "query": "SELECT id FROM ingredient WHERE id = $1 AND user_id = $2"
   },
+  "effa1e39345f8ad203dbd04d0c3f702381552f3d86d074b27e9d7ef4e5774dc4": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "checked",
+          "ordinal": 2,
+          "type_info": "Int8"
+        },
+        {
+          "name": "ingredients",
+          "ordinal": 3,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n      SELECT shopping.id, shopping.name, count(ins.id) filter (where ins.checked) as checked, count(ins.id) AS ingredients\n      FROM shopping\n      LEFT OUTER JOIN ingredient_shopping AS ins ON shopping.id = ins.shopping_id\n      WHERE shopping.user_id = $1 group by shopping.id\n      "
+  },
   "f89045144dda9093966a250565baed1c8500318f4b396777b0db7b2f863a4998": {
     "describe": {
       "columns": [
@@ -875,19 +937,5 @@
       }
     },
     "query": "\n        INSERT INTO \"user\" ( id, username, alias, email, password )\n        VALUES ( $1, $2, $3, $4, $5 )\n        RETURNING id, password\n        "
-  },
-  "fc95fdd54847aca082ac5a4dfbe9ca617510bd27685081055cd0c8785bdd2ecf": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Timestamp",
-          "Int4"
-        ]
-      }
-    },
-    "query": "UPDATE recipe SET name = $1, updated_at = $2 WHERE id = $3"
   }
 }
