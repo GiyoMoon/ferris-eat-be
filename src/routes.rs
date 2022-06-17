@@ -38,6 +38,10 @@ pub fn routes(pool: PgPool) -> Router {
         )
         .layer(Extension(pool.clone()));
 
+    let shopping_api = Router::new()
+        .route("/", get(api::shopping::get_all))
+        .layer(Extension(pool.clone()));
+
     let units_api = Router::new()
         .route("/", get(api::units::get_all))
         .layer(Extension(pool));
@@ -46,5 +50,6 @@ pub fn routes(pool: PgPool) -> Router {
         .nest("/api/users", users_api)
         .nest("/api/recipes", recipes_api)
         .nest("/api/ingredients", ingredients_api)
+        .nest("/api/shopping", shopping_api)
         .nest("/api/units", units_api)
 }
