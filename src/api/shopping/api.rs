@@ -191,3 +191,167 @@ pub async fn create(
 
     Ok(StatusCode::CREATED)
 }
+
+#[derive(Deserialize)]
+pub struct ShoppingAddRecipeReq {
+    recipe_id: i32,
+    ingredients: Vec<IngredientQuantity>,
+}
+
+#[derive(Deserialize)]
+pub struct IngredientQuantity {
+    id: i32,
+    quantity: i32,
+}
+
+pub struct IngredientShopping {
+    id: i32,
+}
+
+#[axum_macros::debug_handler]
+pub async fn add_recipe(
+    claims: Claims,
+    Path(id): Path<i32>,
+    extract::Json(payload): extract::Json<ShoppingAddRecipeReq>,
+    Extension(ref pool): Extension<PgPool>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    sqlx::query!(
+        r#"SELECT * FROM shopping WHERE id = $1 AND user_id = $2"#,
+        id,
+        claims.get_sub()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed adding recipe to shopping list".to_string(),
+        )
+    })?
+    .ok_or((StatusCode::NOT_FOUND, "Shopping list not found".to_string()))?;
+
+    sqlx::query!(
+        r#"SELECT * FROM recipe WHERE id = $1 AND user_id = $2"#,
+        payload.recipe_id,
+        claims.get_sub()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed adding recipe to shopping list".to_string(),
+        )
+    })?
+    .ok_or((StatusCode::NOT_FOUND, "Recipe not found".to_string()))?;
+
+    for ingredient in payload.ingredients.into_iter() {
+        sqlx::query!(
+            r#"SELECT * FROM ingredient WHERE id = $1 AND user_id = $2"#,
+            ingredient.id,
+            claims.get_sub()
+        )
+        .fetch_one(pool)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::NOT_FOUND,
+                format!("Ingredient with id {} not found", ingredient.id),
+            )
+        })?;
+
+        let ingredient_shopping = sqlx::query_as!(
+            IngredientShopping,
+            r#"SELECT id FROM ingredient_shopping WHERE shopping_id = $1 AND ingredient_id = $2"#,
+            id,
+            ingredient.id,
+        )
+        .fetch_optional(pool)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::NOT_FOUND,
+                "Failed adding recipe to shopping list".to_string(),
+            )
+        })?;
+
+        let ingredient_shopping = match ingredient_shopping {
+            Some(ingredient_shopping) => ingredient_shopping,
+            None => sqlx::query_as!(
+                IngredientShopping,
+                r#"
+                    INSERT INTO ingredient_shopping ( shopping_id, ingredient_id, checked )
+                    VALUES ( $1, $2, false) RETURNING id
+                "#,
+                id,
+                ingredient.id,
+            )
+            .fetch_one(pool)
+            .await
+            .map_err(|_| {
+                (
+                    StatusCode::NOT_FOUND,
+                    "Failed adding recipe to shopping list".to_string(),
+                )
+            })?,
+        };
+
+        let shopping_quantity = sqlx::query!(
+            r#"
+                SELECT id from shopping_quantity
+                WHERE ingredient_shopping_id = $1 AND recipe_id = $2
+            "#,
+            ingredient_shopping.id,
+            payload.recipe_id
+        )
+        .fetch_optional(pool)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::NOT_FOUND,
+                "Failed adding recipe to shopping list".to_string(),
+            )
+        })?;
+
+        if shopping_quantity.is_some() {
+            sqlx::query!(
+                r#"
+                    UPDATE shopping_quantity
+                    SET quantity = $1
+                    WHERE ingredient_shopping_id = $2 AND recipe_id = $3
+                "#,
+                ingredient.quantity,
+                ingredient_shopping.id,
+                payload.recipe_id
+            )
+            .execute(pool)
+            .await
+            .map_err(|_| {
+                (
+                    StatusCode::NOT_FOUND,
+                    "Failed adding recipe to shopping list".to_string(),
+                )
+            })?;
+        } else {
+            sqlx::query!(
+                r#"
+                    INSERT INTO shopping_quantity ( ingredient_shopping_id, recipe_id, quantity )
+                    VALUES ( $1, $2, $3)
+                "#,
+                ingredient_shopping.id,
+                payload.recipe_id,
+                ingredient.quantity,
+            )
+            .execute(pool)
+            .await
+            .map_err(|_| {
+                (
+                    StatusCode::NOT_FOUND,
+                    "Failed adding recipe to shopping list".to_string(),
+                )
+            })?;
+        }
+    }
+
+    Ok(StatusCode::CREATED)
+}

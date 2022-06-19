@@ -77,7 +77,13 @@ pub async fn create(
         )
     })?;
 
-    save_recipe_ingredients(insert_result.id, &payload.ingredients, pool).await?;
+    save_recipe_ingredients(
+        insert_result.id,
+        claims.get_sub(),
+        &payload.ingredients,
+        pool,
+    )
+    .await?;
 
     Ok(StatusCode::CREATED)
 }
@@ -181,7 +187,7 @@ pub async fn update(
                 )
             })?;
 
-            save_recipe_ingredients(id, ingredients, pool).await?;
+            save_recipe_ingredients(id, claims.get_sub(), ingredients, pool).await?;
         }
     }
 
