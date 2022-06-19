@@ -25,10 +25,10 @@ pub async fn save_recipe_ingredients(
         })?;
         sqlx::query!(
             r#"
-        INSERT INTO ingredient_quantity ( recipe_id, ingredient_id, quantity )
-        VALUES ( $1, $2, $3 )
-        RETURNING id
-        "#,
+                INSERT INTO recipe_quantity ( recipe_id, ingredient_id, quantity )
+                VALUES ( $1, $2, $3 )
+                RETURNING id
+            "#,
             recipe_id,
             ingredient.id,
             ingredient.quantity

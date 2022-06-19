@@ -22,7 +22,7 @@ pub async fn get_all(
         r#"
         SELECT recipe.id, recipe.name, recipe.created_at, recipe.updated_at, count(iq.id) AS ingredients
         FROM recipe
-        LEFT OUTER JOIN ingredient_quantity AS iq ON recipe.id = iq.recipe_id
+        LEFT OUTER JOIN recipe_quantity AS iq ON recipe.id = iq.recipe_id
         WHERE recipe.user_id = $1 GROUP BY recipe.id
         "#,
         claims.get_sub()
@@ -116,7 +116,7 @@ pub async fn get(
     let ingredients = sqlx::query_as!(
         IngredientForRecipeQuery,
         r#"
-        SELECT i.id, i.name, u.name AS unit, inq.quantity, i.sort FROM ingredient_quantity AS inq
+        SELECT i.id, i.name, u.name AS unit, inq.quantity, i.sort FROM recipe_quantity AS inq
         INNER JOIN ingredient AS i ON inq.ingredient_id = i.id
         INNER JOIN unit AS u ON i.unit_id = u.id
         WHERE inq.recipe_id = $1
@@ -174,18 +174,15 @@ pub async fn update(
 
     if let Some(ref ingredients) = payload.ingredients {
         {
-            sqlx::query!(
-                r#"DELETE FROM ingredient_quantity WHERE recipe_id = $1"#,
-                id
-            )
-            .execute(pool)
-            .await
-            .map_err(|_| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Failed updating recipe".to_string(),
-                )
-            })?;
+            sqlx::query!(r#"DELETE FROM recipe_quantity WHERE recipe_id = $1"#, id)
+                .execute(pool)
+                .await
+                .map_err(|_| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Failed updating recipe".to_string(),
+                    )
+                })?;
 
             save_recipe_ingredients(id, claims.get_sub(), ingredients, pool).await?;
         }

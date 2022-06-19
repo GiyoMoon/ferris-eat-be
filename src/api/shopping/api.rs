@@ -24,7 +24,7 @@ pub async fn get_all(
       r#"
       SELECT shopping.id, shopping.name, count(ins.id) filter (where ins.checked) AS checked, count(ins.id) AS ingredients
       FROM shopping
-      LEFT OUTER JOIN ingredient_shopping AS ins ON shopping.id = ins.shopping_id
+      LEFT OUTER JOIN shopping_ingredient AS ins ON shopping.id = ins.shopping_id
       WHERE shopping.user_id = $1 GROUP BY shopping.id
       "#,
       claims.get_sub()
@@ -101,7 +101,7 @@ pub async fn get(
     let ingredients = sqlx::query!(
         r#"
             SELECT ins.id, ins.checked, i.name, u.name AS unit
-            FROM ingredient_shopping AS ins
+            FROM shopping_ingredient AS ins
             JOIN ingredient AS i ON ins.ingredient_id = i.id
             JOIN unit AS u ON i.unit_id = u.id
             WHERE shopping_id = $1"#,
@@ -124,7 +124,7 @@ pub async fn get(
             SELECT sq.id, sq.quantity, r.id AS recipe_id, r.name AS recipe_name
             FROM shopping_quantity AS sq
             LEFT JOIN recipe AS r ON sq.recipe_id = r.id
-            WHERE ingredient_shopping_id = ANY($1)"#,
+            WHERE shopping_ingredient_id = ANY($1)"#,
         &ids
     )
     .fetch_all(pool)
@@ -260,9 +260,9 @@ pub async fn add_recipe(
             )
         })?;
 
-        let ingredient_shopping = sqlx::query_as!(
+        let shopping_ingredient = sqlx::query_as!(
             IngredientShopping,
-            r#"SELECT id FROM ingredient_shopping WHERE shopping_id = $1 AND ingredient_id = $2"#,
+            r#"SELECT id FROM shopping_ingredient WHERE shopping_id = $1 AND ingredient_id = $2"#,
             id,
             ingredient.id,
         )
@@ -275,12 +275,12 @@ pub async fn add_recipe(
             )
         })?;
 
-        let ingredient_shopping = match ingredient_shopping {
-            Some(ingredient_shopping) => ingredient_shopping,
+        let shopping_ingredient = match shopping_ingredient {
+            Some(shopping_ingredient) => shopping_ingredient,
             None => sqlx::query_as!(
                 IngredientShopping,
                 r#"
-                    INSERT INTO ingredient_shopping ( shopping_id, ingredient_id, checked )
+                    INSERT INTO shopping_ingredient ( shopping_id, ingredient_id, checked )
                     VALUES ( $1, $2, false) RETURNING id
                 "#,
                 id,
@@ -299,9 +299,9 @@ pub async fn add_recipe(
         let shopping_quantity = sqlx::query!(
             r#"
                 SELECT id from shopping_quantity
-                WHERE ingredient_shopping_id = $1 AND recipe_id = $2
+                WHERE shopping_ingredient_id = $1 AND recipe_id = $2
             "#,
-            ingredient_shopping.id,
+            shopping_ingredient.id,
             payload.recipe_id
         )
         .fetch_optional(pool)
@@ -318,10 +318,10 @@ pub async fn add_recipe(
                 r#"
                     UPDATE shopping_quantity
                     SET quantity = $1
-                    WHERE ingredient_shopping_id = $2 AND recipe_id = $3
+                    WHERE shopping_ingredient_id = $2 AND recipe_id = $3
                 "#,
                 ingredient.quantity,
-                ingredient_shopping.id,
+                shopping_ingredient.id,
                 payload.recipe_id
             )
             .execute(pool)
@@ -335,10 +335,10 @@ pub async fn add_recipe(
         } else {
             sqlx::query!(
                 r#"
-                    INSERT INTO shopping_quantity ( ingredient_shopping_id, recipe_id, quantity )
+                    INSERT INTO shopping_quantity ( shopping_ingredient_id, recipe_id, quantity )
                     VALUES ( $1, $2, $3)
                 "#,
-                ingredient_shopping.id,
+                shopping_ingredient.id,
                 payload.recipe_id,
                 ingredient.quantity,
             )
