@@ -6,6 +6,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use validator::Validate;
 
 #[derive(Serialize)]
 pub struct ShoppingGetAllRes {
@@ -192,15 +193,16 @@ pub async fn create(
     Ok(StatusCode::CREATED)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct ShoppingAddRecipeReq {
     recipe_id: i32,
     ingredients: Vec<IngredientQuantity>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct IngredientQuantity {
     id: i32,
+    #[validate(range(min = 1))]
     quantity: i32,
 }
 
@@ -215,6 +217,10 @@ pub async fn add_recipe(
     extract::Json(payload): extract::Json<ShoppingAddRecipeReq>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
+    payload
+        .validate()
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+
     sqlx::query!(
         r#"SELECT * FROM shopping WHERE id = $1 AND user_id = $2"#,
         id,
@@ -298,7 +304,7 @@ pub async fn add_recipe(
 
         let shopping_quantity = sqlx::query!(
             r#"
-                SELECT id from shopping_quantity
+                SELECT id, quantity from shopping_quantity
                 WHERE shopping_ingredient_id = $1 AND recipe_id = $2
             "#,
             shopping_ingredient.id,
@@ -313,14 +319,14 @@ pub async fn add_recipe(
             )
         })?;
 
-        if shopping_quantity.is_some() {
+        if let Some(shopping_quantity) = shopping_quantity {
             sqlx::query!(
                 r#"
                     UPDATE shopping_quantity
                     SET quantity = $1
                     WHERE shopping_ingredient_id = $2 AND recipe_id = $3
                 "#,
-                ingredient.quantity,
+                shopping_quantity.quantity + ingredient.quantity,
                 shopping_ingredient.id,
                 payload.recipe_id
             )
@@ -351,6 +357,138 @@ pub async fn add_recipe(
                 )
             })?;
         }
+    }
+
+    Ok(StatusCode::CREATED)
+}
+
+#[axum_macros::debug_handler]
+pub async fn add_ingredient(
+    claims: Claims,
+    Path(id): Path<i32>,
+    extract::Json(payload): extract::Json<IngredientQuantity>,
+    Extension(ref pool): Extension<PgPool>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    payload
+        .validate()
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    sqlx::query!(
+        r#"SELECT * FROM shopping WHERE id = $1 AND user_id = $2"#,
+        id,
+        claims.get_sub()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed adding ingredient to shopping list".to_string(),
+        )
+    })?
+    .ok_or((StatusCode::NOT_FOUND, "Shopping list not found".to_string()))?;
+
+    sqlx::query!(
+        r#"SELECT * FROM ingredient WHERE id = $1 AND user_id = $2"#,
+        payload.id,
+        claims.get_sub()
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::NOT_FOUND,
+            format!("Ingredient with id {} not found", payload.id),
+        )
+    })?;
+
+    let shopping_ingredient = sqlx::query_as!(
+        IngredientShopping,
+        r#"SELECT id FROM shopping_ingredient WHERE shopping_id = $1 AND ingredient_id = $2"#,
+        id,
+        payload.id,
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::NOT_FOUND,
+            "Failed adding ingredient to shopping list".to_string(),
+        )
+    })?;
+
+    let shopping_ingredient = match shopping_ingredient {
+        Some(shopping_ingredient) => shopping_ingredient,
+        None => sqlx::query_as!(
+            IngredientShopping,
+            r#"
+                INSERT INTO shopping_ingredient ( shopping_id, ingredient_id, checked )
+                VALUES ( $1, $2, false) RETURNING id
+            "#,
+            id,
+            payload.id,
+        )
+        .fetch_one(pool)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::NOT_FOUND,
+                "Failed adding ingredient to shopping list".to_string(),
+            )
+        })?,
+    };
+
+    let shopping_quantity = sqlx::query!(
+        r#"
+            SELECT id, quantity from shopping_quantity
+            WHERE shopping_ingredient_id = $1 AND recipe_id IS NULL
+        "#,
+        shopping_ingredient.id
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::NOT_FOUND,
+            "Failed adding ingredient to shopping list".to_string(),
+        )
+    })?;
+
+    if let Some(shopping_quantity) = shopping_quantity {
+        sqlx::query!(
+            r#"
+                UPDATE shopping_quantity
+                SET quantity = $1
+                WHERE shopping_ingredient_id = $2
+            "#,
+            shopping_quantity.quantity + payload.quantity,
+            shopping_ingredient.id,
+        )
+        .execute(pool)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::NOT_FOUND,
+                "Failed adding ingredient to shopping list".to_string(),
+            )
+        })?;
+    } else {
+        sqlx::query!(
+            r#"
+                INSERT INTO shopping_quantity ( shopping_ingredient_id, quantity )
+                VALUES ( $1, $2)
+            "#,
+            shopping_ingredient.id,
+            payload.quantity,
+        )
+        .execute(pool)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::NOT_FOUND,
+                "Failed adding ingredient to shopping list".to_string(),
+            )
+        })?;
     }
 
     Ok(StatusCode::CREATED)

@@ -42,6 +42,7 @@ pub fn routes(pool: PgPool) -> Router {
         .route("/", get(api::shopping::get_all).post(api::shopping::create))
         .route("/:id", get(api::shopping::get))
         .route("/:id/add/recipe", post(api::shopping::add_recipe))
+        .route("/:id/add/ingredient", post(api::shopping::add_ingredient))
         .layer(Extension(pool.clone()));
 
     let units_api = Router::new()
