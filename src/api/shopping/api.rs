@@ -514,3 +514,89 @@ pub async fn delete(
 
     Ok(StatusCode::OK)
 }
+
+#[derive(Deserialize)]
+pub struct DeleteQuantity {
+    id: i32,
+}
+
+#[axum_macros::debug_handler]
+pub async fn delete_quantity(
+    claims: Claims,
+    Path(id): Path<i32>,
+    extract::Json(payload): extract::Json<DeleteQuantity>,
+    Extension(ref pool): Extension<PgPool>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    sqlx::query!(
+        r#"SELECT * FROM shopping WHERE id = $1 AND user_id = $2"#,
+        id,
+        claims.get_sub()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed deleting shopping quantity".to_string(),
+        )
+    })?
+    .ok_or((StatusCode::NOT_FOUND, "Shopping list not found".to_string()))?;
+
+    let shopping_ingredient = sqlx::query!(
+        r#"
+            SELECT ins.id, COUNT(*) AS quantities
+            FROM shopping_ingredient AS ins
+            JOIN shopping_quantity AS sq ON ins.id = sq.shopping_ingredient_id
+            WHERE ingredient_id = $1 AND shopping_id = $2
+            GROUP BY ins.id
+        "#,
+        payload.id,
+        id,
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::NOT_FOUND,
+            "Shopping ingredient not found".to_string(),
+        )
+    })?;
+
+    sqlx::query!(
+        r#"
+            DELETE FROM shopping_quantity
+            WHERE shopping_ingredient_id = $1 AND recipe_id IS NULL
+            RETURNING id
+        "#,
+        shopping_ingredient.id
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed deleting shopping quantity".to_string(),
+        )
+    })?
+    .ok_or((
+        StatusCode::NOT_FOUND,
+        "Shopping quantity not found".to_string(),
+    ))?;
+
+    if shopping_ingredient.quantities.unwrap_or(0) <= 1 {
+        sqlx::query!(
+            r#"DELETE FROM shopping_ingredient WHERE id = $1"#,
+            shopping_ingredient.id
+        )
+        .execute(pool)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed deleting shopping quantity".to_string(),
+            )
+        })?;
+    }
+
+    Ok(StatusCode::OK)
+}
