@@ -1,6 +1,7 @@
 use crate::{
     api::{
         auth::{Claims, RefreshClaims, Tokens},
+        global::ValidatedJson,
         users::service::{get_tokens, get_user_by_uuid},
     },
     structs::user::{
@@ -10,17 +11,12 @@ use crate::{
 use axum::{extract, http::StatusCode, Extension, Json};
 use sqlx::PgPool;
 use uuid::Uuid;
-use validator::Validate;
 
 #[axum_macros::debug_handler]
 pub async fn register(
-    extract::Json(payload): extract::Json<UserRegisterReq>,
+    ValidatedJson(payload): ValidatedJson<UserRegisterReq>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
-    payload
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
-
     let existing_user = sqlx::query!(
         r#"SELECT * FROM "user" WHERE username = $1 OR email = $2"#,
         payload.username.to_lowercase(),
@@ -145,13 +141,9 @@ pub async fn me(
 #[axum_macros::debug_handler]
 pub async fn update(
     claims: Claims,
-    extract::Json(payload): extract::Json<UserUpdateReq>,
+    ValidatedJson(payload): ValidatedJson<UserUpdateReq>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    payload
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
-
     let existing_user = sqlx::query!(
         r#"SELECT * FROM "user" WHERE email = $1 AND NOT id = $2"#,
         payload.email.to_lowercase(),
@@ -194,13 +186,9 @@ pub async fn update(
 #[axum_macros::debug_handler]
 pub async fn change_password(
     claims: Claims,
-    extract::Json(payload): extract::Json<UserChangePasswordReq>,
+    ValidatedJson(payload): ValidatedJson<UserChangePasswordReq>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
-    payload
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
-
     let user = get_user_by_uuid(claims.get_sub(), pool).await?;
 
     let valid_password = Password::from_hash(user.password.clone())

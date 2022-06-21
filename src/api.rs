@@ -1,4 +1,5 @@
 mod auth;
+mod global;
 pub mod ingredients;
 pub mod recipes;
 pub mod shopping;

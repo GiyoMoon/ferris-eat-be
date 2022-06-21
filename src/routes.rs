@@ -40,7 +40,10 @@ pub fn routes(pool: PgPool) -> Router {
 
     let shopping_api = Router::new()
         .route("/", get(api::shopping::get_all).post(api::shopping::create))
-        .route("/:id", get(api::shopping::get))
+        .route(
+            "/:id",
+            get(api::shopping::get).delete(api::shopping::delete),
+        )
         .route("/:id/add/recipe", post(api::shopping::add_recipe))
         .route("/:id/add/ingredient", post(api::shopping::add_ingredient))
         .layer(Extension(pool.clone()));

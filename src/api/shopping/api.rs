@@ -1,4 +1,4 @@
-use crate::api::auth::Claims;
+use crate::api::{auth::Claims, global::ValidatedJson};
 use axum::{
     extract::{self, Path},
     http::StatusCode,
@@ -196,13 +196,14 @@ pub async fn create(
 #[derive(Deserialize, Validate)]
 pub struct ShoppingAddRecipeReq {
     recipe_id: i32,
+    #[validate]
     ingredients: Vec<IngredientQuantity>,
 }
 
 #[derive(Deserialize, Validate)]
 pub struct IngredientQuantity {
     id: i32,
-    #[validate(range(min = 1))]
+    #[validate(range(min = 1, message = "Quantity has to be at least 1"))]
     quantity: i32,
 }
 
@@ -214,13 +215,9 @@ pub struct IngredientShopping {
 pub async fn add_recipe(
     claims: Claims,
     Path(id): Path<i32>,
-    extract::Json(payload): extract::Json<ShoppingAddRecipeReq>,
+    ValidatedJson(payload): ValidatedJson<ShoppingAddRecipeReq>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    payload
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
-
     sqlx::query!(
         r#"SELECT * FROM shopping WHERE id = $1 AND user_id = $2"#,
         id,
@@ -366,13 +363,9 @@ pub async fn add_recipe(
 pub async fn add_ingredient(
     claims: Claims,
     Path(id): Path<i32>,
-    extract::Json(payload): extract::Json<IngredientQuantity>,
+    ValidatedJson(payload): ValidatedJson<IngredientQuantity>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    payload
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
-
     sqlx::query!(
         r#"SELECT * FROM shopping WHERE id = $1 AND user_id = $2"#,
         id,
@@ -492,4 +485,32 @@ pub async fn add_ingredient(
     }
 
     Ok(StatusCode::CREATED)
+}
+
+#[axum_macros::debug_handler]
+pub async fn delete(
+    claims: Claims,
+    Path(id): Path<i32>,
+    Extension(ref pool): Extension<PgPool>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    sqlx::query!(
+        r#"
+            DELETE FROM shopping
+            WHERE id = $1 AND user_id = $2
+            RETURNING id
+        "#,
+        id,
+        claims.get_sub()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed deleting shopping list".to_string(),
+        )
+    })?
+    .ok_or((StatusCode::NOT_FOUND, "Shopping list not found".to_string()))?;
+
+    Ok(StatusCode::OK)
 }
