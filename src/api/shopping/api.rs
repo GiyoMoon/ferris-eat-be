@@ -23,9 +23,9 @@ pub async fn get_all(
 ) -> Result<(StatusCode, Json<Vec<ShoppingGetAllRes>>), (StatusCode, String)> {
     let recipes = sqlx::query!(
       r#"
-      SELECT shopping.id, shopping.name, count(ins.id) filter (where ins.checked) AS checked, count(ins.id) AS ingredients
+      SELECT shopping.id, shopping.name, count(si.id) filter (where si.checked) AS checked, count(si.id) AS ingredients
       FROM shopping
-      LEFT OUTER JOIN shopping_ingredient AS ins ON shopping.id = ins.shopping_id
+      LEFT OUTER JOIN shopping_ingredient AS si ON shopping.id = si.shopping_id
       WHERE shopping.user_id = $1 GROUP BY shopping.id
       "#,
       claims.get_sub()
@@ -74,6 +74,7 @@ pub struct ShoppingIngredient {
 #[derive(Serialize, Clone)]
 pub struct ShoppingQuantities {
     pub id: i32,
+    pub shopping_ingredient_id: i32,
     pub quantity: i32,
     pub recipe_id: Option<i32>,
     pub recipe_name: Option<String>,
@@ -101,9 +102,9 @@ pub async fn get(
 
     let ingredients = sqlx::query!(
         r#"
-            SELECT ins.id, ins.checked, i.name, u.name AS unit
-            FROM shopping_ingredient AS ins
-            JOIN ingredient AS i ON ins.ingredient_id = i.id
+            SELECT si.id, si.checked, i.name, u.name AS unit
+            FROM shopping_ingredient AS si
+            JOIN ingredient AS i ON si.ingredient_id = i.id
             JOIN unit AS u ON i.unit_id = u.id
             WHERE shopping_id = $1"#,
         id
@@ -122,7 +123,7 @@ pub async fn get(
     let quantities = sqlx::query_as!(
         ShoppingQuantities,
         r#"
-            SELECT sq.id, sq.quantity, r.id AS recipe_id, r.name AS recipe_name
+            SELECT sq.id, sq.shopping_ingredient_id, sq.quantity, r.id AS recipe_id, r.name AS recipe_name
             FROM shopping_quantity AS sq
             LEFT JOIN recipe AS r ON sq.recipe_id = r.id
             WHERE shopping_ingredient_id = ANY($1)"#,
@@ -143,7 +144,7 @@ pub async fn get(
             let quantities = quantities
                 .clone()
                 .into_iter()
-                .filter(|q| q.id == i.id)
+                .filter(|q| q.shopping_ingredient_id == i.id)
                 .collect();
             ShoppingIngredient {
                 id: i.id,
@@ -516,7 +517,7 @@ pub async fn delete(
 }
 
 #[derive(Deserialize)]
-pub struct DeleteQuantity {
+pub struct Delete {
     id: i32,
 }
 
@@ -524,7 +525,7 @@ pub struct DeleteQuantity {
 pub async fn delete_quantity(
     claims: Claims,
     Path(id): Path<i32>,
-    extract::Json(payload): extract::Json<DeleteQuantity>,
+    extract::Json(payload): extract::Json<Delete>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query!(
@@ -544,11 +545,11 @@ pub async fn delete_quantity(
 
     let shopping_ingredient = sqlx::query!(
         r#"
-            SELECT ins.id, COUNT(*) AS quantities
-            FROM shopping_ingredient AS ins
-            JOIN shopping_quantity AS sq ON ins.id = sq.shopping_ingredient_id
+            SELECT si.id, COUNT(*) AS quantities
+            FROM shopping_ingredient AS si
+            JOIN shopping_quantity AS sq ON si.id = sq.shopping_ingredient_id
             WHERE ingredient_id = $1 AND shopping_id = $2
-            GROUP BY ins.id
+            GROUP BY si.id
         "#,
         payload.id,
         id,
@@ -597,6 +598,163 @@ pub async fn delete_quantity(
             )
         })?;
     }
+
+    Ok(StatusCode::OK)
+}
+
+#[axum_macros::debug_handler]
+pub async fn delete_recipe(
+    claims: Claims,
+    Path(id): Path<i32>,
+    extract::Json(payload): extract::Json<Delete>,
+    Extension(ref pool): Extension<PgPool>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    sqlx::query!(
+        r#"SELECT * FROM shopping WHERE id = $1 AND user_id = $2"#,
+        id,
+        claims.get_sub()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed deleting shopping recipe".to_string(),
+        )
+    })?
+    .ok_or((StatusCode::NOT_FOUND, "Shopping list not found".to_string()))?;
+
+    sqlx::query!(
+        r#"SELECT * FROM recipe WHERE id = $1 AND user_id = $2"#,
+        payload.id,
+        claims.get_sub()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed deleting shopping recipe".to_string(),
+        )
+    })?
+    .ok_or((StatusCode::NOT_FOUND, "Recipe not found".to_string()))?;
+
+    let shopping_quantities = sqlx::query!(
+        r#"
+            SELECT sq.id, sq.shopping_ingredient_id, COUNT(*) AS quantities
+            FROM shopping_quantity AS sq
+            JOIN shopping_ingredient AS si ON sq.shopping_ingredient_id = si.id
+            JOIN shopping_quantity AS sq2  ON si.id = sq2.shopping_ingredient_id
+            WHERE sq.recipe_id = $1 AND si.shopping_id = $2
+            GROUP BY sq.id
+        "#,
+        payload.id,
+        id,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::NOT_FOUND,
+            "Shopping ingredient not found".to_string(),
+        )
+    })?;
+
+    let sq_ids: &Vec<i32> = &shopping_quantities.iter().map(|sq| sq.id).collect();
+
+    sqlx::query!(
+        r#"DELETE FROM shopping_quantity WHERE id = ANY($1)"#,
+        sq_ids
+    )
+    .execute(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed deleting shopping recipe".to_string(),
+        )
+    })?;
+
+    let si_ids: &Vec<i32> = &shopping_quantities
+        .iter()
+        .filter_map(|sq| {
+            if sq.quantities.unwrap_or(0) > 1 {
+                None
+            } else {
+                Some(sq.shopping_ingredient_id)
+            }
+        })
+        .collect();
+
+    sqlx::query!(
+        r#"DELETE FROM shopping_ingredient WHERE id = ANY($1)"#,
+        si_ids
+    )
+    .execute(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed deleting shopping recipe".to_string(),
+        )
+    })?;
+
+    Ok(StatusCode::OK)
+}
+
+#[axum_macros::debug_handler]
+pub async fn delete_ingredient(
+    claims: Claims,
+    Path(id): Path<i32>,
+    extract::Json(payload): extract::Json<Delete>,
+    Extension(ref pool): Extension<PgPool>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    sqlx::query!(
+        r#"SELECT * FROM shopping WHERE id = $1 AND user_id = $2"#,
+        id,
+        claims.get_sub()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed deleting shopping ingredient".to_string(),
+        )
+    })?
+    .ok_or((StatusCode::NOT_FOUND, "Shopping list not found".to_string()))?;
+
+    let shopping_ingredient = sqlx::query!(
+        r#"
+            SELECT id
+            FROM shopping_ingredient
+            WHERE ingredient_id = $1 AND shopping_id = $2
+        "#,
+        payload.id,
+        id,
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::NOT_FOUND,
+            "Shopping ingredient not found".to_string(),
+        )
+    })?;
+
+    // On delete cascade for shopping_quantities
+    sqlx::query!(
+        r#"DELETE FROM shopping_ingredient WHERE id = $1"#,
+        shopping_ingredient.id
+    )
+    .execute(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed deleting shopping ingredient".to_string(),
+        )
+    })?;
 
     Ok(StatusCode::OK)
 }

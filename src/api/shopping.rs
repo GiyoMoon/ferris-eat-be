@@ -3,6 +3,8 @@ pub use api::add_ingredient;
 pub use api::add_recipe;
 pub use api::create;
 pub use api::delete;
+pub use api::delete_ingredient;
 pub use api::delete_quantity;
+pub use api::delete_recipe;
 pub use api::get;
 pub use api::get_all;

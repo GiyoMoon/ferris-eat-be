@@ -44,8 +44,14 @@ pub fn routes(pool: PgPool) -> Router {
             "/:id",
             get(api::shopping::get).delete(api::shopping::delete),
         )
-        .route("/:id/recipe", post(api::shopping::add_recipe))
-        .route("/:id/ingredient", post(api::shopping::add_ingredient))
+        .route(
+            "/:id/recipe",
+            post(api::shopping::add_recipe).delete(api::shopping::delete_recipe),
+        )
+        .route(
+            "/:id/ingredient",
+            post(api::shopping::add_ingredient).delete(api::shopping::delete_ingredient),
+        )
         .route("/:id/quantity", delete(api::shopping::delete_quantity))
         .layer(Extension(pool.clone()));
 
