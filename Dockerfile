@@ -5,9 +5,9 @@ WORKDIR /ferris
 # Docker trick to only build dependencies if Cargo.toml or Cargo.lock has changed
 COPY Cargo.lock .
 COPY Cargo.toml .
-RUN mkdir ./src
-RUN printf 'fn main() {}' >> ./src/main.rs
-RUN cargo build --release
+# RUN mkdir ./src
+# RUN printf 'fn main() {}' >> ./src/main.rs
+# RUN cargo build --release
 
 # Build the actual project
 COPY sqlx-data.json .
