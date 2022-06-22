@@ -758,3 +758,112 @@ pub async fn delete_ingredient(
 
     Ok(StatusCode::OK)
 }
+
+#[derive(Deserialize)]
+pub struct CheckIngredient {
+    pub id: i32,
+}
+
+#[axum_macros::debug_handler]
+pub async fn check_ingredient(
+    claims: Claims,
+    Path(id): Path<i32>,
+    extract::Json(payload): extract::Json<CheckIngredient>,
+    Extension(ref pool): Extension<PgPool>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    sqlx::query!(
+        r#"SELECT * FROM shopping WHERE id = $1 AND user_id = $2"#,
+        id,
+        claims.get_sub()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed checking shopping ingredient".to_string(),
+        )
+    })?
+    .ok_or((StatusCode::NOT_FOUND, "Shopping list not found".to_string()))?;
+
+    sqlx::query!(
+        r#"
+            UPDATE shopping_ingredient
+            SET checked = NOT checked
+            WHERE ingredient_id = $1 AND shopping_id = $2
+            RETURNING id
+        "#,
+        payload.id,
+        id,
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed checking shopping ingredient".to_string(),
+        )
+    })?
+    .ok_or((
+        StatusCode::NOT_FOUND,
+        "Shopping ingredient not found".to_string(),
+    ))?;
+
+    Ok(StatusCode::OK)
+}
+
+#[derive(Deserialize)]
+pub struct UpdateIngredient {
+    pub id: i32,
+    pub quantity: i32,
+}
+
+#[axum_macros::debug_handler]
+pub async fn update_ingredient(
+    claims: Claims,
+    Path(id): Path<i32>,
+    extract::Json(payload): extract::Json<UpdateIngredient>,
+    Extension(ref pool): Extension<PgPool>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    sqlx::query!(
+        r#"SELECT * FROM shopping WHERE id = $1 AND user_id = $2"#,
+        id,
+        claims.get_sub()
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed updating shopping ingredient".to_string(),
+        )
+    })?
+    .ok_or((StatusCode::NOT_FOUND, "Shopping list not found".to_string()))?;
+
+    sqlx::query!(
+        r#"
+            UPDATE shopping_quantity AS sq
+            SET quantity = $1
+            FROM shopping_ingredient AS si
+            WHERE sq.shopping_ingredient_id = si.id AND sq.id = $2 AND si.shopping_id = $3
+            RETURNING sq.id
+        "#,
+        payload.quantity,
+        payload.id,
+        id,
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed updating shopping ingredient".to_string(),
+        )
+    })?
+    .ok_or((
+        StatusCode::NOT_FOUND,
+        "Shopping quantity not found".to_string(),
+    ))?;
+
+    Ok(StatusCode::OK)
+}

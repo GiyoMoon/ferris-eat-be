@@ -439,6 +439,28 @@
     },
     "query": "SELECT id, sort FROM ingredient WHERE id = $1 AND user_id = $2"
   },
+  "3084b3d7c8c3e2baa882cf3a9ca6957e154eb9910efde4fa80fc7c5fc5ea05fb": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            UPDATE shopping_quantity AS sq\n            SET quantity = $1\n            FROM shopping_ingredient AS si\n            WHERE sq.shopping_ingredient_id = si.id AND sq.id = $2 AND si.shopping_id = $3\n            RETURNING sq.id\n        "
+  },
   "32ae03bc526c4f83f3f938e3304afe094a96b928c500c993ab14cfb5bd33ef15": {
     "describe": {
       "columns": [],
@@ -1460,6 +1482,27 @@
       }
     },
     "query": "\n            SELECT sq.id, sq.shopping_ingredient_id, sq.quantity, r.id AS recipe_id, r.name AS recipe_name\n            FROM shopping_quantity AS sq\n            LEFT JOIN recipe AS r ON sq.recipe_id = r.id\n            WHERE shopping_ingredient_id = ANY($1)"
+  },
+  "fa1afcc212ad46d39a14753739f1bca0e490ad5374afb180038461c620d7f1d2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            UPDATE shopping_ingredient\n            SET checked = NOT checked\n            WHERE ingredient_id = $1 AND shopping_id = $2\n            RETURNING id\n        "
   },
   "fa37118cc7541d37c2f314df9ddd7a892d6c4c03d6d428ce739cde9570bdac9e": {
     "describe": {
