@@ -196,13 +196,12 @@ pub async fn create(
 
 #[derive(Deserialize, Validate)]
 pub struct ShoppingAddRecipeReq {
-    recipe_id: i32,
     #[validate]
-    ingredients: Vec<IngredientQuantity>,
+    ingredients: Vec<IngredientIdQuantity>,
 }
 
 #[derive(Deserialize, Validate)]
-pub struct IngredientQuantity {
+pub struct IngredientIdQuantity {
     id: i32,
     #[validate(range(min = 1, message = "Quantity has to be at least 1"))]
     quantity: i32,
@@ -215,7 +214,7 @@ pub struct IngredientShopping {
 #[axum_macros::debug_handler]
 pub async fn add_recipe(
     claims: Claims,
-    Path(id): Path<i32>,
+    Path((id, recipe_id)): Path<(i32, i32)>,
     ValidatedJson(payload): ValidatedJson<ShoppingAddRecipeReq>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
@@ -236,7 +235,7 @@ pub async fn add_recipe(
 
     sqlx::query!(
         r#"SELECT * FROM recipe WHERE id = $1 AND user_id = $2"#,
-        payload.recipe_id,
+        recipe_id,
         claims.get_sub()
     )
     .fetch_optional(pool)
@@ -306,7 +305,7 @@ pub async fn add_recipe(
                 WHERE shopping_ingredient_id = $1 AND recipe_id = $2
             "#,
             shopping_ingredient.id,
-            payload.recipe_id
+            recipe_id
         )
         .fetch_optional(pool)
         .await
@@ -326,7 +325,7 @@ pub async fn add_recipe(
                 "#,
                 shopping_quantity.quantity + ingredient.quantity,
                 shopping_ingredient.id,
-                payload.recipe_id
+                recipe_id
             )
             .execute(pool)
             .await
@@ -343,7 +342,7 @@ pub async fn add_recipe(
                     VALUES ( $1, $2, $3)
                 "#,
                 shopping_ingredient.id,
-                payload.recipe_id,
+                recipe_id,
                 ingredient.quantity,
             )
             .execute(pool)
@@ -360,10 +359,16 @@ pub async fn add_recipe(
     Ok(StatusCode::CREATED)
 }
 
+#[derive(Deserialize, Validate)]
+pub struct IngredientQuantity {
+    #[validate(range(min = 1, message = "Quantity has to be at least 1"))]
+    quantity: i32,
+}
+
 #[axum_macros::debug_handler]
 pub async fn add_ingredient(
     claims: Claims,
-    Path(id): Path<i32>,
+    Path((id, ingredient_id)): Path<(i32, i32)>,
     ValidatedJson(payload): ValidatedJson<IngredientQuantity>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
@@ -384,7 +389,7 @@ pub async fn add_ingredient(
 
     sqlx::query!(
         r#"SELECT * FROM ingredient WHERE id = $1 AND user_id = $2"#,
-        payload.id,
+        ingredient_id,
         claims.get_sub()
     )
     .fetch_one(pool)
@@ -392,7 +397,7 @@ pub async fn add_ingredient(
     .map_err(|_| {
         (
             StatusCode::NOT_FOUND,
-            format!("Ingredient with id {} not found", payload.id),
+            format!("Ingredient with id {} not found", ingredient_id),
         )
     })?;
 
@@ -400,7 +405,7 @@ pub async fn add_ingredient(
         IngredientShopping,
         r#"SELECT id FROM shopping_ingredient WHERE shopping_id = $1 AND ingredient_id = $2"#,
         id,
-        payload.id,
+        ingredient_id,
     )
     .fetch_optional(pool)
     .await
@@ -420,7 +425,7 @@ pub async fn add_ingredient(
                 VALUES ( $1, $2, false) RETURNING id
             "#,
             id,
-            payload.id,
+            ingredient_id,
         )
         .fetch_one(pool)
         .await
@@ -516,16 +521,10 @@ pub async fn delete(
     Ok(StatusCode::OK)
 }
 
-#[derive(Deserialize)]
-pub struct Delete {
-    id: i32,
-}
-
 #[axum_macros::debug_handler]
 pub async fn delete_quantity(
     claims: Claims,
-    Path(id): Path<i32>,
-    extract::Json(payload): extract::Json<Delete>,
+    Path((id, quantity_id)): Path<(i32, i32)>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query!(
@@ -551,7 +550,7 @@ pub async fn delete_quantity(
             WHERE ingredient_id = $1 AND shopping_id = $2
             GROUP BY si.id
         "#,
-        payload.id,
+        quantity_id,
         id,
     )
     .fetch_one(pool)
@@ -605,8 +604,7 @@ pub async fn delete_quantity(
 #[axum_macros::debug_handler]
 pub async fn delete_recipe(
     claims: Claims,
-    Path(id): Path<i32>,
-    extract::Json(payload): extract::Json<Delete>,
+    Path((id, recipe_id)): Path<(i32, i32)>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query!(
@@ -626,7 +624,7 @@ pub async fn delete_recipe(
 
     sqlx::query!(
         r#"SELECT * FROM recipe WHERE id = $1 AND user_id = $2"#,
-        payload.id,
+        recipe_id,
         claims.get_sub()
     )
     .fetch_optional(pool)
@@ -648,7 +646,7 @@ pub async fn delete_recipe(
             WHERE sq.recipe_id = $1 AND si.shopping_id = $2
             GROUP BY sq.id
         "#,
-        payload.id,
+        recipe_id,
         id,
     )
     .fetch_all(pool)
@@ -705,8 +703,7 @@ pub async fn delete_recipe(
 #[axum_macros::debug_handler]
 pub async fn delete_ingredient(
     claims: Claims,
-    Path(id): Path<i32>,
-    extract::Json(payload): extract::Json<Delete>,
+    Path((id, ingredient_id)): Path<(i32, i32)>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query!(
@@ -730,7 +727,7 @@ pub async fn delete_ingredient(
             FROM shopping_ingredient
             WHERE ingredient_id = $1 AND shopping_id = $2
         "#,
-        payload.id,
+        ingredient_id,
         id,
     )
     .fetch_one(pool)
@@ -759,16 +756,10 @@ pub async fn delete_ingredient(
     Ok(StatusCode::OK)
 }
 
-#[derive(Deserialize)]
-pub struct CheckIngredient {
-    pub id: i32,
-}
-
 #[axum_macros::debug_handler]
 pub async fn check_ingredient(
     claims: Claims,
-    Path(id): Path<i32>,
-    extract::Json(payload): extract::Json<CheckIngredient>,
+    Path((id, ingredient_id)): Path<(i32, i32)>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query!(
@@ -793,7 +784,7 @@ pub async fn check_ingredient(
             WHERE ingredient_id = $1 AND shopping_id = $2
             RETURNING id
         "#,
-        payload.id,
+        ingredient_id,
         id,
     )
     .fetch_optional(pool)
@@ -814,14 +805,13 @@ pub async fn check_ingredient(
 
 #[derive(Deserialize)]
 pub struct UpdateIngredient {
-    pub id: i32,
     pub quantity: i32,
 }
 
 #[axum_macros::debug_handler]
 pub async fn update_ingredient(
     claims: Claims,
-    Path(id): Path<i32>,
+    Path((id, ingredient_id)): Path<(i32, i32)>,
     extract::Json(payload): extract::Json<UpdateIngredient>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
@@ -849,7 +839,7 @@ pub async fn update_ingredient(
             RETURNING sq.id
         "#,
         payload.quantity,
-        payload.id,
+        ingredient_id,
         id,
     )
     .fetch_optional(pool)
