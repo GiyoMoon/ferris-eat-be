@@ -10,6 +10,10 @@ use serde_json::json;
 use std::collections::HashMap;
 use validator::{Validate, ValidationErrors};
 
+pub fn get_default_err(message: &str) -> (StatusCode, String) {
+    (StatusCode::INTERNAL_SERVER_ERROR, message.to_string())
+}
+
 pub struct ValidatedJson<T>(pub T);
 
 #[async_trait]
