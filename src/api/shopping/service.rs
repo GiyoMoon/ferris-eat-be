@@ -42,10 +42,6 @@ pub struct ShoppingIngredientId {
     id: i32,
 }
 
-pub struct ShoppingQuantity {
-    quantity: i32,
-}
-
 pub async fn add_shopping_quantity(
     ingredient_id: i32,
     ingredient_quantity: i32,
@@ -95,64 +91,32 @@ pub async fn add_shopping_quantity(
         .map_err(|_| default_err.clone())?,
     };
 
-    let shopping_quantity: Option<ShoppingQuantity>;
+    let shopping_quantity = sqlx::query!(
+        r#"
+            SELECT quantity from shopping_quantity
+            WHERE shopping_ingredient_id = $1 AND recipe_id IS NOT DISTINCT FROM $2
+        "#,
+        shopping_ingredient.id,
+        recipe_id
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| default_err.clone())?;
 
-    if let Some(recipe_id) = recipe_id {
-        shopping_quantity = sqlx::query_as!(
-            ShoppingQuantity,
+    if let Some(shopping_quantity) = shopping_quantity {
+        sqlx::query!(
             r#"
-                SELECT quantity from shopping_quantity
-                WHERE shopping_ingredient_id = $1 AND recipe_id = $2
+                UPDATE shopping_quantity
+                SET quantity = $1
+                WHERE shopping_ingredient_id = $2 AND recipe_id IS NOT DISTINCT FROM $3
             "#,
+            shopping_quantity.quantity + ingredient_quantity,
             shopping_ingredient.id,
             recipe_id
         )
-        .fetch_optional(pool)
+        .execute(pool)
         .await
         .map_err(|_| default_err.clone())?;
-    } else {
-        shopping_quantity = sqlx::query_as!(
-            ShoppingQuantity,
-            r#"
-                SELECT quantity from shopping_quantity
-                WHERE shopping_ingredient_id = $1 AND recipe_id IS NULL
-            "#,
-            shopping_ingredient.id
-        )
-        .fetch_optional(pool)
-        .await
-        .map_err(|_| default_err.clone())?;
-    }
-
-    if let Some(shopping_quantity) = shopping_quantity {
-        if let Some(recipe_id) = recipe_id {
-            sqlx::query!(
-                r#"
-                    UPDATE shopping_quantity
-                    SET quantity = $1
-                    WHERE shopping_ingredient_id = $2 AND recipe_id = $3
-                "#,
-                shopping_quantity.quantity + ingredient_quantity,
-                shopping_ingredient.id,
-                recipe_id
-            )
-            .execute(pool)
-            .await
-            .map_err(|_| default_err.clone())?;
-        } else {
-            sqlx::query!(
-                r#"
-                    UPDATE shopping_quantity
-                    SET quantity = $1
-                    WHERE shopping_ingredient_id = $2 AND recipe_id IS NULL
-                "#,
-                shopping_quantity.quantity + ingredient_quantity,
-                shopping_ingredient.id,
-            )
-            .execute(pool)
-            .await
-            .map_err(|_| default_err.clone())?;
-        }
     } else {
         sqlx::query!(
             r#"
