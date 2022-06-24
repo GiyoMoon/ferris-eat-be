@@ -1,4 +1,4 @@
-use crate::structs::recipe::RecipeIngredientWithQuantity;
+use super::api::IngredientWithQuantity;
 use axum::http::StatusCode;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -6,7 +6,7 @@ use uuid::Uuid;
 pub async fn save_recipe_ingredients(
     recipe_id: i32,
     user_id: Uuid,
-    ingredients: &[RecipeIngredientWithQuantity],
+    ingredients: &[IngredientWithQuantity],
     pool: &PgPool,
 ) -> Result<(), (StatusCode, String)> {
     for ingredient in ingredients.iter() {

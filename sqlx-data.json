@@ -93,6 +93,27 @@
     },
     "query": "UPDATE recipe SET name = $1 WHERE id = $2"
   },
+  "11718c531ff963439e5dffa83a45e649498df6808b48f7596e6147d85b289ed8": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n            DELETE FROM recipe\n            WHERE id = $1 AND user_id = $2\n            RETURNING id\n        "
+  },
   "133cd80638ea4e8fd1ccbc0f53715249fd02737e659b19a3d8510e5626163674": {
     "describe": {
       "columns": [
@@ -170,50 +191,6 @@
       }
     },
     "query": "SELECT * FROM recipe WHERE id = $1 AND user_id = $2"
-  },
-  "16e4d49e8c6806bb1919bee327e6e724847f0710cdc417dc5016adf938fabac3": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "unit",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "quantity",
-          "ordinal": 3,
-          "type_info": "Int4"
-        },
-        {
-          "name": "sort",
-          "ordinal": 4,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4"
-        ]
-      }
-    },
-    "query": "\n        SELECT i.id, i.name, u.name AS unit, inq.quantity, i.sort FROM recipe_quantity AS inq\n        INNER JOIN ingredient AS i ON inq.ingredient_id = i.id\n        INNER JOIN unit AS u ON i.unit_id = u.id\n        WHERE inq.recipe_id = $1\n        "
   },
   "1a71a0d5b59377ff6e7f4a4ac87d554128d0f20c5389f8a433fd7b4998ec65c3": {
     "describe": {
@@ -447,27 +424,6 @@
     },
     "query": "UPDATE ingredient SET unit_id = $1 WHERE id = $2"
   },
-  "380324fce2279555f4df0e0fbf7dd04f22d8bc0bbd7cffa56fe40ab26bf19b16": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n        DELETE FROM recipe\n        WHERE id = $1 AND user_id = $2\n        RETURNING id\n        "
-  },
   "3bd15169c6d815ede9e0cc22b5eca0c1b99eaeb9cef376d28df9fc7e44d9a985": {
     "describe": {
       "columns": [],
@@ -480,45 +436,6 @@
       }
     },
     "query": "UPDATE recipe SET updated_at = $1 WHERE id = $2"
-  },
-  "402f97d0976c8c840b1814a3bab46998b83b3731f15187c8dbd3e8f173a28dc5": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 2,
-          "type_info": "Timestamp"
-        },
-        {
-          "name": "updated_at",
-          "ordinal": 3,
-          "type_info": "Timestamp"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n        SELECT id, name, created_at, updated_at FROM recipe\n        WHERE id = $1 AND user_id = $2\n        "
   },
   "4dc8e2906acce761bb5e05f1780a3b84f0826af49359454a2dd54df4c2e7780d": {
     "describe": {
@@ -546,6 +463,27 @@
       }
     },
     "query": "SELECT id, name FROM shopping WHERE id = $1 AND user_id = $2"
+  },
+  "53c07382cbc7f0303e3dfcd8a002373f321d53e63f55c167dbb7012b1f18e893": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n            INSERT INTO recipe ( name, user_id )\n            VALUES ( $1, $2 )\n            RETURNING id\n        "
   },
   "5b9be529306ceef290b4e4039e651acaeda866768c5030f5a9e4f004ef82f09d": {
     "describe": {
@@ -591,6 +529,45 @@
       }
     },
     "query": "SELECT * FROM shopping WHERE id = $1 AND user_id = $2"
+  },
+  "5f28c6de41215a9b0a26906217d2ece75e49bb377e4c77a0ed5863a2e93129b3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 3,
+          "type_info": "Timestamp"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n            SELECT id, name, created_at, updated_at FROM recipe\n            WHERE id = $1 AND user_id = $2\n        "
   },
   "6547f61efd5550320911ad83a4c6c7085d55875c1e4314a682dde24bf3f6efc7": {
     "describe": {
@@ -801,6 +778,44 @@
     },
     "query": "\n            SELECT sq.id, sq.shopping_ingredient_id, COUNT(*) AS quantities\n            FROM shopping_quantity AS sq\n            JOIN shopping_ingredient AS si ON sq.shopping_ingredient_id = si.id\n            JOIN shopping_quantity AS sq2  ON si.id = sq2.shopping_ingredient_id\n            WHERE sq.recipe_id = $1 AND si.shopping_id = $2\n            GROUP BY sq.id\n        "
   },
+  "8bad4831e1555315356edea9389c7bbab336852877c55242a82139d30851be6d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "checked",
+          "ordinal": 2,
+          "type_info": "Int8"
+        },
+        {
+          "name": "ingredients",
+          "ordinal": 3,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n        SELECT shopping.id, shopping.name, count(si.id) filter (where si.checked) AS checked, count(si.id) AS ingredients\n        FROM shopping\n        LEFT OUTER JOIN shopping_ingredient AS si ON shopping.id = si.shopping_id\n        WHERE shopping.user_id = $1 GROUP BY shopping.id\n      "
+  },
   "8f18db3d72e7536df5eecfa54e433c5a080b7b8ee2988d4a2b31100eb82b81d5": {
     "describe": {
       "columns": [
@@ -912,7 +927,7 @@
     },
     "query": "\n          SELECT sq.id, COUNT(*) AS quantities\n          FROM shopping_quantity AS sq\n          JOIN shopping_ingredient AS si ON sq.shopping_ingredient_id = si.id\n          JOIN shopping_quantity AS sq2 ON si.id = sq2.shopping_ingredient_id\n          WHERE sq.id = $1 AND si.shopping_id = $2\n          GROUP BY sq.id\n        "
   },
-  "97c7defb206ce4b19a371631ce817202ac879c2e0eb34a907a28923fe8a89d0b": {
+  "9a977cdc526c37256fdc53de196e61570d2a8962908ce88e4a0b85cb9cef3949": {
     "describe": {
       "columns": [
         {
@@ -921,34 +936,40 @@
           "type_info": "Int4"
         },
         {
-          "name": "name",
+          "name": "shopping_ingredient_id",
           "ordinal": 1,
-          "type_info": "Varchar"
+          "type_info": "Int4"
         },
         {
-          "name": "checked",
+          "name": "quantity",
           "ordinal": 2,
-          "type_info": "Int8"
+          "type_info": "Int4"
         },
         {
-          "name": "ingredients",
+          "name": "recipe_id",
           "ordinal": 3,
-          "type_info": "Int8"
+          "type_info": "Int4"
+        },
+        {
+          "name": "recipe_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
         }
       ],
       "nullable": [
         false,
         false,
-        null,
-        null
+        false,
+        true,
+        true
       ],
       "parameters": {
         "Left": [
-          "Uuid"
+          "Int4Array"
         ]
       }
     },
-    "query": "\n      SELECT shopping.id, shopping.name, count(si.id) filter (where si.checked) AS checked, count(si.id) AS ingredients\n      FROM shopping\n      LEFT OUTER JOIN shopping_ingredient AS si ON shopping.id = si.shopping_id\n      WHERE shopping.user_id = $1 GROUP BY shopping.id\n      "
+    "query": "\n            SELECT sq.id, sq.shopping_ingredient_id, sq.quantity, r.id AS recipe_id, r.name AS recipe_name\n            FROM shopping_quantity AS sq\n            LEFT JOIN recipe AS r ON sq.recipe_id = r.id\n            WHERE shopping_ingredient_id = ANY($1)\n        "
   },
   "9b7ae9cb30aa04e19872fb359fa85101140a2f074346c83b54fe681dec732c5c": {
     "describe": {
@@ -1032,71 +1053,6 @@
       }
     },
     "query": "\n            SELECT quantity from shopping_quantity\n            WHERE shopping_ingredient_id = $1 AND recipe_id IS NOT DISTINCT FROM $2\n        "
-  },
-  "a8d8cca1d45a22c13e5d8bdce4440aba8e50b2549a97a0959683614ca540fa73": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n        INSERT INTO recipe ( name, user_id )\n        VALUES ( $1, $2 )\n        RETURNING id\n        "
-  },
-  "b0de19e1c15c3259702a4e630d742a16e933102db8b48d841c1948a69c53f0b1": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 2,
-          "type_info": "Timestamp"
-        },
-        {
-          "name": "updated_at",
-          "ordinal": 3,
-          "type_info": "Timestamp"
-        },
-        {
-          "name": "ingredients",
-          "ordinal": 4,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n        SELECT recipe.id, recipe.name, recipe.created_at, recipe.updated_at, count(iq.id) AS ingredients\n        FROM recipe\n        LEFT OUTER JOIN recipe_quantity AS iq ON recipe.id = iq.recipe_id\n        WHERE recipe.user_id = $1 GROUP BY recipe.id\n        "
   },
   "b234c80a1c14f51420cfe56fdc2b958add3daab9089166c6bd0e7cd27e8486d1": {
     "describe": {
@@ -1212,6 +1168,50 @@
     },
     "query": "SELECT id FROM shopping_ingredient WHERE shopping_id = $1 AND ingredient_id = $2"
   },
+  "c395a443482e22d93ef6dd6b71a6c522e7eb5f801acd5ea9e2ca1c97f266d19b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 3,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "ingredients",
+          "ordinal": 4,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n            SELECT recipe.id, recipe.name, recipe.created_at, recipe.updated_at, count(iq.id) AS ingredients\n            FROM recipe\n            LEFT OUTER JOIN recipe_quantity AS iq ON recipe.id = iq.recipe_id\n            WHERE recipe.user_id = $1 GROUP BY recipe.id\n        "
+  },
   "ce8ac04c15a6f5b9f9ebfb3d960fe425923b591155a69ecc142f52008a3f0645": {
     "describe": {
       "columns": [
@@ -1259,44 +1259,6 @@
     },
     "query": "SELECT sort FROM ingredient WHERE user_id = $1 ORDER BY sort DESC LIMIT 1"
   },
-  "d73ccb900e85b3b5aad97540552ee2f271b550ecfe942348b718e96696f6f8ac": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "checked",
-          "ordinal": 1,
-          "type_info": "Bool"
-        },
-        {
-          "name": "name",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "unit",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4"
-        ]
-      }
-    },
-    "query": "\n            SELECT si.id, si.checked, i.name, u.name AS unit\n            FROM shopping_ingredient AS si\n            JOIN ingredient AS i ON si.ingredient_id = i.id\n            JOIN unit AS u ON i.unit_id = u.id\n            WHERE shopping_id = $1"
-  },
   "d7b99b79e72e8ce4dbe086786521b0425662564a319f82ff7d4b25491ac39bef": {
     "describe": {
       "columns": [
@@ -1340,6 +1302,88 @@
     },
     "query": "SELECT id FROM ingredient WHERE id = $1 AND user_id = $2"
   },
+  "eb52b719ce7c57f8745478e282c7a1cb75506ad283fc30b99f485dcc2d7869b3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "checked",
+          "ordinal": 1,
+          "type_info": "Bool"
+        },
+        {
+          "name": "name",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "unit",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            SELECT si.id, si.checked, i.name, u.name AS unit\n            FROM shopping_ingredient AS si\n            JOIN ingredient AS i ON si.ingredient_id = i.id\n            JOIN unit AS u ON i.unit_id = u.id\n            WHERE shopping_id = $1\n        "
+  },
+  "ebb9199c4a23b69ad60537df20ef1e5d1ee95e2ee7160fea303c282bfe91a05d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "unit",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "quantity",
+          "ordinal": 3,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sort",
+          "ordinal": 4,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            SELECT i.id, i.name, u.name AS unit, inq.quantity, i.sort FROM recipe_quantity AS inq\n            INNER JOIN ingredient AS i ON inq.ingredient_id = i.id\n            INNER JOIN unit AS u ON i.unit_id = u.id\n            WHERE inq.recipe_id = $1\n        "
+  },
   "ed8ea4a7ade1ec5b2edf37a9af5f18148100e14c2ccd75ba2cac85746a25046b": {
     "describe": {
       "columns": [
@@ -1360,51 +1404,7 @@
     },
     "query": "\n            DELETE FROM shopping_quantity\n            WHERE id = $1\n            RETURNING id\n        "
   },
-  "f58872189a956ddeea9c8316069209a4c68b4818ff4c42a8bbfc90dc787c1a79": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "shopping_ingredient_id",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "quantity",
-          "ordinal": 2,
-          "type_info": "Int4"
-        },
-        {
-          "name": "recipe_id",
-          "ordinal": 3,
-          "type_info": "Int4"
-        },
-        {
-          "name": "recipe_name",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Int4Array"
-        ]
-      }
-    },
-    "query": "\n            SELECT sq.id, sq.shopping_ingredient_id, sq.quantity, r.id AS recipe_id, r.name AS recipe_name\n            FROM shopping_quantity AS sq\n            LEFT JOIN recipe AS r ON sq.recipe_id = r.id\n            WHERE shopping_ingredient_id = ANY($1)"
-  },
-  "fa37118cc7541d37c2f314df9ddd7a892d6c4c03d6d428ce739cde9570bdac9e": {
+  "fa350dccdd2de1dc5cdd25fbfcbd57caf72792b1dfeb27e578e2bd0d2fee5eb4": {
     "describe": {
       "columns": [
         {
@@ -1432,7 +1432,7 @@
         ]
       }
     },
-    "query": "\n        INSERT INTO \"user\" ( id, username, alias, email, password )\n        VALUES ( $1, $2, $3, $4, $5 )\n        RETURNING id, password\n        "
+    "query": "\n            INSERT INTO \"user\" ( id, username, alias, email, password )\n            VALUES ( $1, $2, $3, $4, $5 )\n            RETURNING id, password\n        "
   },
   "ff289a6058721f04ea319865448e98c1788b6a9b1e776b1b8c1b1d66771ea50c": {
     "describe": {

@@ -1,12 +1,11 @@
-use crate::{
-    api::auth::{Claims, Tokens},
-    structs::user::UserModel,
-};
+use crate::api::auth::{Claims, Tokens};
 use axum::http::StatusCode;
+use bcrypt::BcryptResult;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use once_cell::sync::Lazy;
 use sqlx::PgPool;
 use std::time::{SystemTime, UNIX_EPOCH};
+use time::PrimitiveDateTime;
 use uuid::Uuid;
 
 static SECRET: Lazy<String> =
@@ -14,6 +13,43 @@ static SECRET: Lazy<String> =
 
 static REFRESH_SECRET: Lazy<String> =
     Lazy::new(|| std::env::var("REFRESH_SECRET").expect("REFRESH_SECRET env var not found"));
+
+pub struct UserModel {
+    pub id: Uuid,
+    pub username: String,
+    pub alias: String,
+    pub email: String,
+    pub password: String,
+    pub created_at: PrimitiveDateTime,
+    pub updated_at: PrimitiveDateTime,
+}
+
+pub struct Password(String);
+
+impl Password {
+    pub fn from_plain(clear_text_password: String) -> Result<Password, (StatusCode, String)> {
+        Ok(Password(bcrypt::hash(clear_text_password, 10).map_err(
+            |_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed hashing the password".to_string(),
+                )
+            },
+        )?))
+    }
+
+    pub fn from_hash(hash: String) -> Password {
+        Password(hash)
+    }
+
+    pub fn get(&self) -> &str {
+        &self.0
+    }
+
+    pub fn verify(&self, clear_text_password: String) -> BcryptResult<bool> {
+        bcrypt::verify(clear_text_password, &self.0)
+    }
+}
 
 pub fn get_tokens(uuid: Uuid, password: String) -> Result<Tokens, (StatusCode, String)> {
     let token = encode(

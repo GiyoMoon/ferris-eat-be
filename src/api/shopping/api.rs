@@ -22,10 +22,10 @@ pub async fn get_all(
 ) -> Result<(StatusCode, Json<Vec<GetAllRes>>), (StatusCode, String)> {
     let recipes = sqlx::query!(
       r#"
-      SELECT shopping.id, shopping.name, count(si.id) filter (where si.checked) AS checked, count(si.id) AS ingredients
-      FROM shopping
-      LEFT OUTER JOIN shopping_ingredient AS si ON shopping.id = si.shopping_id
-      WHERE shopping.user_id = $1 GROUP BY shopping.id
+        SELECT shopping.id, shopping.name, count(si.id) filter (where si.checked) AS checked, count(si.id) AS ingredients
+        FROM shopping
+        LEFT OUTER JOIN shopping_ingredient AS si ON shopping.id = si.shopping_id
+        WHERE shopping.user_id = $1 GROUP BY shopping.id
       "#,
       claims.get_sub()
   )
@@ -101,7 +101,8 @@ pub async fn get(
             FROM shopping_ingredient AS si
             JOIN ingredient AS i ON si.ingredient_id = i.id
             JOIN unit AS u ON i.unit_id = u.id
-            WHERE shopping_id = $1"#,
+            WHERE shopping_id = $1
+        "#,
         id
     )
     .fetch_all(pool)
@@ -116,7 +117,8 @@ pub async fn get(
             SELECT sq.id, sq.shopping_ingredient_id, sq.quantity, r.id AS recipe_id, r.name AS recipe_name
             FROM shopping_quantity AS sq
             LEFT JOIN recipe AS r ON sq.recipe_id = r.id
-            WHERE shopping_ingredient_id = ANY($1)"#,
+            WHERE shopping_ingredient_id = ANY($1)
+        "#,
         &ids
     )
     .fetch_all(pool)

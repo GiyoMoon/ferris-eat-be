@@ -4,7 +4,7 @@ use serde::Serialize;
 use sqlx::PgPool;
 
 #[derive(Serialize)]
-pub struct UnitGetRes {
+pub struct GetRes {
     id: i32,
     name: String,
 }
@@ -13,7 +13,7 @@ pub struct UnitGetRes {
 pub async fn get_all(
     _: Claims,
     Extension(ref pool): Extension<PgPool>,
-) -> Result<(StatusCode, Json<Vec<UnitGetRes>>), (StatusCode, String)> {
+) -> Result<(StatusCode, Json<Vec<GetRes>>), (StatusCode, String)> {
     let units = sqlx::query!(r#"SELECT id, name FROM unit"#)
         .fetch_all(pool)
         .await
@@ -29,7 +29,7 @@ pub async fn get_all(
         Json(
             units
                 .into_iter()
-                .map(|record| UnitGetRes {
+                .map(|record| GetRes {
                     id: record.id,
                     name: record.name,
                 })

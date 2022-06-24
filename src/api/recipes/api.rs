@@ -1,29 +1,35 @@
-use crate::{
-    api::{auth::Claims, recipes::service::save_recipe_ingredients},
-    structs::recipe::{
-        IngredientForRecipeQuery, RecipeCreateReq, RecipeGetDetailRes, RecipeGetRes, RecipeQuery,
-        RecipeUpdateReq,
-    },
-};
+use crate::api::{auth::Claims, recipes::service::save_recipe_ingredients};
 use axum::{
     extract::{self, Path},
     http::StatusCode,
     Extension, Json,
 };
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use time::{OffsetDateTime, PrimitiveDateTime};
+
+#[derive(Serialize)]
+pub struct GetAllRes {
+    pub id: i32,
+    pub name: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub updated_at: OffsetDateTime,
+    pub ingredients: i64,
+}
 
 #[axum_macros::debug_handler]
 pub async fn get_all(
     claims: Claims,
     Extension(ref pool): Extension<PgPool>,
-) -> Result<(StatusCode, Json<Vec<RecipeGetRes>>), (StatusCode, String)> {
+) -> Result<(StatusCode, Json<Vec<GetAllRes>>), (StatusCode, String)> {
     let recipes = sqlx::query!(
         r#"
-        SELECT recipe.id, recipe.name, recipe.created_at, recipe.updated_at, count(iq.id) AS ingredients
-        FROM recipe
-        LEFT OUTER JOIN recipe_quantity AS iq ON recipe.id = iq.recipe_id
-        WHERE recipe.user_id = $1 GROUP BY recipe.id
+            SELECT recipe.id, recipe.name, recipe.created_at, recipe.updated_at, count(iq.id) AS ingredients
+            FROM recipe
+            LEFT OUTER JOIN recipe_quantity AS iq ON recipe.id = iq.recipe_id
+            WHERE recipe.user_id = $1 GROUP BY recipe.id
         "#,
         claims.get_sub()
     )
@@ -41,7 +47,7 @@ pub async fn get_all(
         Json(
             recipes
                 .into_iter()
-                .map(|record| RecipeGetRes {
+                .map(|record| GetAllRes {
                     id: record.id,
                     name: record.name,
                     created_at: record.created_at.assume_utc(),
@@ -53,17 +59,29 @@ pub async fn get_all(
     ))
 }
 
+#[derive(Deserialize)]
+pub struct CreateReq {
+    pub name: String,
+    pub ingredients: Vec<IngredientWithQuantity>,
+}
+
+#[derive(Deserialize)]
+pub struct IngredientWithQuantity {
+    pub id: i32,
+    pub quantity: i32,
+}
+
 #[axum_macros::debug_handler]
 pub async fn create(
     claims: Claims,
-    extract::Json(payload): extract::Json<RecipeCreateReq>,
+    extract::Json(payload): extract::Json<CreateReq>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let insert_result = sqlx::query!(
         r#"
-        INSERT INTO recipe ( name, user_id )
-        VALUES ( $1, $2 )
-        RETURNING id
+            INSERT INTO recipe ( name, user_id )
+            VALUES ( $1, $2 )
+            RETURNING id
         "#,
         payload.name,
         claims.get_sub()
@@ -88,17 +106,74 @@ pub async fn create(
     Ok(StatusCode::CREATED)
 }
 
+#[derive(Serialize)]
+pub struct GetRes {
+    pub id: i32,
+    pub name: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub updated_at: OffsetDateTime,
+    pub ingredients: Vec<IngredientDetail>,
+}
+
+#[derive(Serialize)]
+pub struct IngredientDetail {
+    pub id: i32,
+    pub name: String,
+    pub unit: String,
+    pub quantity: i32,
+}
+
+impl GetRes {
+    pub fn new(recipe: RecipeQuery, mut ingredients: Vec<IngredientForRecipeQuery>) -> Self {
+        ingredients.sort_by(|a, b| a.sort.cmp(&b.sort));
+        let ingredients = ingredients
+            .into_iter()
+            .map(|i| IngredientDetail {
+                id: i.id,
+                name: i.name,
+                unit: i.unit,
+                quantity: i.quantity,
+            })
+            .collect();
+
+        GetRes {
+            id: recipe.id,
+            name: recipe.name,
+            created_at: recipe.created_at.assume_utc(),
+            updated_at: recipe.updated_at.assume_utc(),
+            ingredients,
+        }
+    }
+}
+
+pub struct RecipeQuery {
+    pub id: i32,
+    pub name: String,
+    pub created_at: PrimitiveDateTime,
+    pub updated_at: PrimitiveDateTime,
+}
+
+pub struct IngredientForRecipeQuery {
+    pub id: i32,
+    pub name: String,
+    pub unit: String,
+    pub quantity: i32,
+    pub sort: i32,
+}
+
 #[axum_macros::debug_handler]
 pub async fn get(
     claims: Claims,
     Path(id): Path<i32>,
     Extension(ref pool): Extension<PgPool>,
-) -> Result<(StatusCode, Json<RecipeGetDetailRes>), (StatusCode, String)> {
+) -> Result<(StatusCode, Json<GetRes>), (StatusCode, String)> {
     let recipe: RecipeQuery = sqlx::query_as!(
         RecipeQuery,
         r#"
-        SELECT id, name, created_at, updated_at FROM recipe
-        WHERE id = $1 AND user_id = $2
+            SELECT id, name, created_at, updated_at FROM recipe
+            WHERE id = $1 AND user_id = $2
         "#,
         id,
         claims.get_sub()
@@ -116,10 +191,10 @@ pub async fn get(
     let ingredients = sqlx::query_as!(
         IngredientForRecipeQuery,
         r#"
-        SELECT i.id, i.name, u.name AS unit, inq.quantity, i.sort FROM recipe_quantity AS inq
-        INNER JOIN ingredient AS i ON inq.ingredient_id = i.id
-        INNER JOIN unit AS u ON i.unit_id = u.id
-        WHERE inq.recipe_id = $1
+            SELECT i.id, i.name, u.name AS unit, inq.quantity, i.sort FROM recipe_quantity AS inq
+            INNER JOIN ingredient AS i ON inq.ingredient_id = i.id
+            INNER JOIN unit AS u ON i.unit_id = u.id
+            WHERE inq.recipe_id = $1
         "#,
         recipe.id
     )
@@ -132,17 +207,20 @@ pub async fn get(
         )
     })?;
 
-    Ok((
-        StatusCode::OK,
-        Json(RecipeGetDetailRes::new(recipe, ingredients)),
-    ))
+    Ok((StatusCode::OK, Json(GetRes::new(recipe, ingredients))))
+}
+
+#[derive(Deserialize)]
+pub struct UpdateReq {
+    pub name: Option<String>,
+    pub ingredients: Option<Vec<IngredientWithQuantity>>,
 }
 
 #[axum_macros::debug_handler]
 pub async fn update(
     claims: Claims,
     Path(id): Path<i32>,
-    extract::Json(payload): extract::Json<RecipeUpdateReq>,
+    extract::Json(payload): extract::Json<UpdateReq>,
     Extension(ref pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query!(
@@ -216,9 +294,9 @@ pub async fn delete(
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query!(
         r#"
-        DELETE FROM recipe
-        WHERE id = $1 AND user_id = $2
-        RETURNING id
+            DELETE FROM recipe
+            WHERE id = $1 AND user_id = $2
+            RETURNING id
         "#,
         id,
         claims.get_sub()
