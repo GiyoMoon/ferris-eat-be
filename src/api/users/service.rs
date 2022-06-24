@@ -113,5 +113,5 @@ pub async fn get_user_by_uuid(
     sqlx::query_as!(UserModel, r#"SELECT * FROM "user" WHERE id = $1"#, uuid)
         .fetch_one(pool)
         .await
-        .map_err(|_| (StatusCode::UNAUTHORIZED, "Failed getting user".to_string()))
+        .map_err(|_| (StatusCode::NOT_FOUND, "Failed getting user".to_string()))
 }

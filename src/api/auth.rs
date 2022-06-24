@@ -122,8 +122,8 @@ pub enum AuthError {
 impl IntoResponse for AuthError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
-            AuthError::MissingCredentials => (StatusCode::BAD_REQUEST, "Missing credentials"),
-            AuthError::InvalidToken => (StatusCode::BAD_REQUEST, "Invalid token"),
+            AuthError::MissingCredentials => (StatusCode::FORBIDDEN, "Missing credentials"),
+            AuthError::InvalidToken => (StatusCode::FORBIDDEN, "Invalid token"),
         };
         let body = Json(json!({
             "error": error_message,
