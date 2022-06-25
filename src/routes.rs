@@ -1,6 +1,6 @@
 use crate::api;
 use axum::{
-    http::header::CONTENT_TYPE,
+    http::header::{AUTHORIZATION, CONTENT_TYPE},
     routing::{get, patch, post, put},
     Extension, Router,
 };
@@ -74,6 +74,6 @@ pub fn routes(pool: PgPool) -> Router {
                     "https://eat.ferris.rs".parse().unwrap(),
                 ])
                 .allow_methods(Any)
-                .allow_headers([CONTENT_TYPE]),
+                .allow_headers([CONTENT_TYPE, AUTHORIZATION]),
         )
 }
