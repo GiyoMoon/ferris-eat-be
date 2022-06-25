@@ -1,6 +1,5 @@
 use crate::api;
 use axum::{
-    headers::HeaderValue,
     http::header::CONTENT_TYPE,
     routing::{get, patch, post, put},
     Extension, Router,
@@ -70,8 +69,10 @@ pub fn routes(pool: PgPool) -> Router {
         .layer(Extension(pool))
         .layer(
             CorsLayer::new()
-                .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
-                .allow_origin("https://eat.ferris.rs".parse::<HeaderValue>().unwrap())
+                .allow_origin([
+                    "http://localhost:3000".parse().unwrap(),
+                    "https://eat.ferris.rs".parse().unwrap(),
+                ])
                 .allow_methods(Any)
                 .allow_headers([CONTENT_TYPE]),
         )
