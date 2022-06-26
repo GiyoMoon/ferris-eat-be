@@ -15,8 +15,14 @@ use sqlx::PgPool;
 pub struct GetRes {
     id: i32,
     name: String,
-    unit: String,
+    unit: GetResUnit,
     sort: i32,
+}
+
+#[derive(Serialize)]
+pub struct GetResUnit {
+    id: i32,
+    name: String,
 }
 
 #[axum_macros::debug_handler]
@@ -26,7 +32,7 @@ pub async fn get_all(
 ) -> Result<(StatusCode, Json<Vec<GetRes>>), (StatusCode, String)> {
     let units = sqlx::query!(
         r#"
-        SELECT i.id, i.name, u.name AS unit, i.sort FROM ingredient AS i
+        SELECT i.id, i.name, u.id AS unit_id, u.name AS unit_name, i.sort FROM ingredient AS i
         INNER JOIN unit AS u ON i.unit_id = u.id
         WHERE i.user_id = $1
         ORDER BY i.sort
@@ -47,7 +53,10 @@ pub async fn get_all(
         .map(|record| GetRes {
             id: record.id,
             name: record.name,
-            unit: record.unit,
+            unit: GetResUnit {
+                id: record.unit_id,
+                name: record.unit_name,
+            },
             sort: record.sort,
         })
         .collect();
@@ -245,7 +254,7 @@ pub async fn sort(
 
     if payload.new_sort > old_sort {
         let subtract_sort = sqlx::query!(
-            r#"SELECT id, sort FROM ingredient WHERE sort > $1 AND sort < $2 AND user_id = $3 ORDER BY sort"#,
+            r#"SELECT id, sort FROM ingredient WHERE sort > $1 AND sort <= $2 AND user_id = $3 ORDER BY sort"#,
             old_sort,
             payload.new_sort,
             claims.get_sub()
@@ -265,17 +274,7 @@ pub async fn sort(
         }
     }
 
-    update_ingredient_sort(
-        id,
-        if payload.new_sort < old_sort {
-            payload.new_sort
-        } else {
-            payload.new_sort - 1
-        },
-        default_err.clone(),
-        pool,
-    )
-    .await?;
+    update_ingredient_sort(id, payload.new_sort, default_err.clone(), pool).await?;
 
     Ok(StatusCode::OK)
 }

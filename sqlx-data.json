@@ -569,34 +569,6 @@
     },
     "query": "\n            SELECT id, name, created_at, updated_at FROM recipe\n            WHERE id = $1 AND user_id = $2\n        "
   },
-  "6547f61efd5550320911ad83a4c6c7085d55875c1e4314a682dde24bf3f6efc7": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "sort",
-          "ordinal": 1,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Int4",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id, sort FROM ingredient WHERE sort > $1 AND sort < $2 AND user_id = $3 ORDER BY sort"
-  },
   "68b5492c71d3157f48cd9de2b11ae57d2efa481cfd46588429c176a0c9fed42c": {
     "describe": {
       "columns": [
@@ -971,44 +943,6 @@
     },
     "query": "\n            SELECT sq.id, sq.shopping_ingredient_id, sq.quantity, r.id AS recipe_id, r.name AS recipe_name\n            FROM shopping_quantity AS sq\n            LEFT JOIN recipe AS r ON sq.recipe_id = r.id\n            WHERE shopping_ingredient_id = ANY($1)\n        "
   },
-  "9b7ae9cb30aa04e19872fb359fa85101140a2f074346c83b54fe681dec732c5c": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "unit",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "sort",
-          "ordinal": 3,
-          "type_info": "Int4"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "\n        SELECT i.id, i.name, u.name AS unit, i.sort FROM ingredient AS i\n        INNER JOIN unit AS u ON i.unit_id = u.id\n        WHERE i.user_id = $1\n        ORDER BY i.sort\n        "
-  },
   "a493a0e83b37b3b10e1f223ad1ba39aad762909e88b9f48e4a545ee1477e9d0e": {
     "describe": {
       "columns": [
@@ -1302,6 +1236,34 @@
     },
     "query": "SELECT id FROM ingredient WHERE id = $1 AND user_id = $2"
   },
+  "e41136bf6162f628b50f8b593044c8aa42b4146369a952db70faa7a04b480aa7": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "sort",
+          "ordinal": 1,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id, sort FROM ingredient WHERE sort > $1 AND sort <= $2 AND user_id = $3 ORDER BY sort"
+  },
   "eb52b719ce7c57f8745478e282c7a1cb75506ad283fc30b99f485dcc2d7869b3": {
     "describe": {
       "columns": [
@@ -1403,6 +1365,50 @@
       }
     },
     "query": "\n            DELETE FROM shopping_quantity\n            WHERE id = $1\n            RETURNING id\n        "
+  },
+  "f13811b891e42175ebd7dc14abaa5ca5118e45ef6e59030f9b71f1cabee64299": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "unit_id",
+          "ordinal": 2,
+          "type_info": "Int4"
+        },
+        {
+          "name": "unit_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "sort",
+          "ordinal": 4,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\n        SELECT i.id, i.name, u.id AS unit_id, u.name AS unit_name, i.sort FROM ingredient AS i\n        INNER JOIN unit AS u ON i.unit_id = u.id\n        WHERE i.user_id = $1\n        ORDER BY i.sort\n        "
   },
   "fa350dccdd2de1dc5cdd25fbfcbd57caf72792b1dfeb27e578e2bd0d2fee5eb4": {
     "describe": {
