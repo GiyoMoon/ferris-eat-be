@@ -18,7 +18,7 @@ pub struct GetAllRes {
 #[axum_macros::debug_handler]
 pub async fn get_all(
     claims: Claims,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<Vec<GetAllRes>>), (StatusCode, String)> {
     let recipes = sqlx::query!(
       r#"
@@ -29,7 +29,7 @@ pub async fn get_all(
       "#,
       claims.get_sub()
   )
-  .fetch_all(pool)
+  .fetch_all(&pool)
   .await
   .map_err(|_|  (
     StatusCode::INTERNAL_SERVER_ERROR,
@@ -81,7 +81,7 @@ pub struct Quantities {
 pub async fn get(
     claims: Claims,
     Path(id): Path<i32>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<GetRes>), (StatusCode, String)> {
     let default_err = get_default_err("Failed getting shopping list");
 
@@ -90,7 +90,7 @@ pub async fn get(
         id,
         claims.get_sub()
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| default_err.clone())?
     .ok_or((StatusCode::NOT_FOUND, "Shopping list not found".to_string()))?;
@@ -105,7 +105,7 @@ pub async fn get(
         "#,
         id
     )
-    .fetch_all(pool)
+    .fetch_all(&pool)
     .await
     .map_err(|_| default_err.clone())?;
 
@@ -121,7 +121,7 @@ pub async fn get(
         "#,
         &ids
     )
-    .fetch_all(pool)
+    .fetch_all(&pool)
     .await
     .map_err(|_| default_err )?;
 
@@ -162,14 +162,14 @@ pub struct CreateReq {
 pub async fn create(
     claims: Claims,
     extract::Json(payload): extract::Json<CreateReq>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query!(
         r#"INSERT INTO shopping ( name, user_id ) VALUES ( $1, $2 )"#,
         payload.name,
         claims.get_sub()
     )
-    .execute(pool)
+    .execute(&pool)
     .await
     .map_err(|_| {
         (
@@ -185,7 +185,7 @@ pub async fn create(
 pub async fn delete(
     claims: Claims,
     Path(id): Path<i32>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query!(
         r#"
@@ -196,7 +196,7 @@ pub async fn delete(
         id,
         claims.get_sub()
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| {
         (

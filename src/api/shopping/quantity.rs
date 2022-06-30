@@ -17,11 +17,11 @@ pub async fn update_quantity(
     claims: Claims,
     Path((id, ingredient_id)): Path<(i32, i32)>,
     extract::Json(payload): extract::Json<UpdateQuantityReq>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let default_err = get_default_err("Failed updating shopping ingredient");
 
-    validate_shopping_id(id, claims.get_sub(), default_err.clone(), pool).await?;
+    validate_shopping_id(id, claims.get_sub(), default_err.clone(), &pool).await?;
 
     sqlx::query!(
         r#"
@@ -35,7 +35,7 @@ pub async fn update_quantity(
         ingredient_id,
         id,
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| default_err)?
     .ok_or((
@@ -50,11 +50,11 @@ pub async fn update_quantity(
 pub async fn delete_quantity(
     claims: Claims,
     Path((id, quantity_id)): Path<(i32, i32)>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let default_err = get_default_err("Failed deleting shopping quantity");
 
-    validate_shopping_id(id, claims.get_sub(), default_err.clone(), pool).await?;
+    validate_shopping_id(id, claims.get_sub(), default_err.clone(), &pool).await?;
 
     let shopping_ingredient = sqlx::query!(
         r#"
@@ -68,7 +68,7 @@ pub async fn delete_quantity(
         quantity_id,
         id,
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| default_err.clone())?
     .ok_or((
@@ -84,7 +84,7 @@ pub async fn delete_quantity(
         "#,
         shopping_ingredient.id
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| default_err.clone())?
     .ok_or((
@@ -97,7 +97,7 @@ pub async fn delete_quantity(
             r#"DELETE FROM shopping_ingredient WHERE id = $1"#,
             shopping_ingredient.id
         )
-        .execute(pool)
+        .execute(&pool)
         .await
         .map_err(|_| default_err)?;
     }

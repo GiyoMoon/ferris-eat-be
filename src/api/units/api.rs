@@ -12,10 +12,10 @@ pub struct GetRes {
 #[axum_macros::debug_handler]
 pub async fn get_all(
     _: Claims,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<Vec<GetRes>>), (StatusCode, String)> {
     let units = sqlx::query!(r#"SELECT id, name FROM unit"#)
-        .fetch_all(pool)
+        .fetch_all(&pool)
         .await
         .map_err(|_| {
             (

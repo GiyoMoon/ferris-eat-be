@@ -28,7 +28,7 @@ pub struct GetResUnit {
 #[axum_macros::debug_handler]
 pub async fn get_all(
     claims: Claims,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<Vec<GetRes>>), (StatusCode, String)> {
     let units = sqlx::query!(
         r#"
@@ -39,7 +39,7 @@ pub async fn get_all(
         "#,
         claims.get_sub()
     )
-    .fetch_all(pool)
+    .fetch_all(&pool)
     .await
     .map_err(|_| {
         (
@@ -75,12 +75,12 @@ pub struct CreateReq {
 pub async fn create(
     claims: Claims,
     extract::Json(payload): extract::Json<CreateReq>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let default_err = get_default_err("Failed creating ingredient");
 
     // Lat ingredient
-    let max = get_last_ingredient_by_sort(claims.get_sub(), default_err.clone(), pool).await?;
+    let max = get_last_ingredient_by_sort(claims.get_sub(), default_err.clone(), &pool).await?;
 
     let sort = match payload.sort {
         Some(sort) => {
@@ -110,7 +110,7 @@ pub async fn create(
         sort,
         claims.get_sub()
     )
-    .fetch_all(pool)
+    .fetch_all(&pool)
     .await
     .map_err(|_| default_err.clone())?;
 
@@ -121,7 +121,7 @@ pub async fn create(
         sort,
         claims.get_sub()
     )
-    .execute(pool)
+    .execute(&pool)
     .await
     .map_err(|_| default_err.clone())?;
 
@@ -130,7 +130,7 @@ pub async fn create(
             ingredient.id,
             ingredient.sort + 1,
             default_err.clone(),
-            pool,
+            &pool,
         )
         .await?;
     }
@@ -149,7 +149,7 @@ pub async fn update(
     claims: Claims,
     Path(id): Path<i32>,
     extract::Json(payload): extract::Json<UpdateReq>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let default_err = get_default_err("Failed updating ingredient");
 
@@ -158,14 +158,14 @@ pub async fn update(
         id,
         claims.get_sub()
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| default_err.clone())?
     .ok_or((StatusCode::NOT_FOUND, "Ingredient not found".to_string()))?;
 
     if let Some(name) = payload.name {
         sqlx::query!(r#"UPDATE ingredient SET name = $1 WHERE id = $2"#, name, id,)
-            .execute(pool)
+            .execute(&pool)
             .await
             .map_err(|_| default_err.clone())?;
     }
@@ -176,7 +176,7 @@ pub async fn update(
             unit_id,
             id,
         )
-        .execute(pool)
+        .execute(&pool)
         .await
         .map_err(|_| default_err)?;
     }
@@ -194,12 +194,12 @@ pub async fn sort(
     claims: Claims,
     Path(id): Path<i32>,
     extract::Json(mut payload): extract::Json<SortReq>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let default_err = get_default_err("Failed sorting ingredient");
 
     // Last ingredient
-    let max = get_last_ingredient_by_sort(claims.get_sub(), default_err.clone(), pool).await?;
+    let max = get_last_ingredient_by_sort(claims.get_sub(), default_err.clone(), &pool).await?;
 
     // Old position of ingredient
     let old_sort = sqlx::query!(
@@ -207,7 +207,7 @@ pub async fn sort(
         id,
         claims.get_sub(),
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| default_err.clone())?
     .ok_or((StatusCode::NOT_FOUND, "Ingredient not found".to_string()))?
@@ -237,7 +237,7 @@ pub async fn sort(
             old_sort,
             claims.get_sub()
         )
-        .fetch_all(pool)
+        .fetch_all(&pool)
         .await
         .map_err(|_| default_err.clone())?;
 
@@ -246,7 +246,7 @@ pub async fn sort(
                 ingredient.id,
                 ingredient.sort + 1,
                 default_err.clone(),
-                pool,
+                &pool,
             )
             .await?;
         }
@@ -259,7 +259,7 @@ pub async fn sort(
             payload.new_sort,
             claims.get_sub()
         )
-        .fetch_all(pool)
+        .fetch_all(&pool)
         .await
         .map_err(|_| default_err.clone())?;
 
@@ -268,13 +268,13 @@ pub async fn sort(
                 ingredient.id,
                 ingredient.sort - 1,
                 default_err.clone(),
-                pool,
+                &pool,
             )
             .await?;
         }
     }
 
-    update_ingredient_sort(id, payload.new_sort, default_err.clone(), pool).await?;
+    update_ingredient_sort(id, payload.new_sort, default_err.clone(), &pool).await?;
 
     Ok(StatusCode::OK)
 }
@@ -283,7 +283,7 @@ pub async fn sort(
 pub async fn delete(
     claims: Claims,
     Path(id): Path<i32>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let default_err = get_default_err("Failed deleting ingredient");
 
@@ -292,13 +292,13 @@ pub async fn delete(
         id,
         claims.get_sub()
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| default_err.clone())?
     .ok_or((StatusCode::NOT_FOUND, "Ingredient not found".to_string()))?;
 
     sqlx::query!(r#"DELETE FROM ingredient WHERE id = $1"#, id)
-        .execute(pool)
+        .execute(&pool)
         .await
         .map_err(|_| default_err.clone())?;
 
@@ -307,7 +307,7 @@ pub async fn delete(
         to_delete.sort,
         claims.get_sub()
     )
-    .fetch_all(pool)
+    .fetch_all(&pool)
     .await
     .map_err(|_| default_err.clone())?;
 
@@ -316,7 +316,7 @@ pub async fn delete(
             ingredient.id,
             ingredient.sort - 1,
             default_err.clone(),
-            pool,
+            &pool,
         )
         .await?;
     }

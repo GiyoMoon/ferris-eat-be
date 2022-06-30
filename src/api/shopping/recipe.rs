@@ -26,13 +26,13 @@ pub async fn add_recipe(
     claims: Claims,
     Path((id, recipe_id)): Path<(i32, i32)>,
     ValidatedJson(payload): ValidatedJson<AddRecipeReq>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let default_err = get_default_err("Failed adding recipe to shopping list");
 
-    validate_shopping_id(id, claims.get_sub(), default_err.clone(), pool).await?;
+    validate_shopping_id(id, claims.get_sub(), default_err.clone(), &pool).await?;
 
-    validate_recipe_id(recipe_id, claims.get_sub(), default_err.clone(), pool).await?;
+    validate_recipe_id(recipe_id, claims.get_sub(), default_err.clone(), &pool).await?;
 
     for ingredient in payload.ingredients.into_iter() {
         add_shopping_quantity(
@@ -42,7 +42,7 @@ pub async fn add_recipe(
             id,
             Some(recipe_id),
             default_err.clone(),
-            pool,
+            &pool,
         )
         .await?;
     }
@@ -54,13 +54,13 @@ pub async fn add_recipe(
 pub async fn delete_recipe(
     claims: Claims,
     Path((id, recipe_id)): Path<(i32, i32)>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let default_err = get_default_err("Failed deleting shopping recipe");
 
-    validate_shopping_id(id, claims.get_sub(), default_err.clone(), pool).await?;
+    validate_shopping_id(id, claims.get_sub(), default_err.clone(), &pool).await?;
 
-    validate_recipe_id(recipe_id, claims.get_sub(), default_err.clone(), pool).await?;
+    validate_recipe_id(recipe_id, claims.get_sub(), default_err.clone(), &pool).await?;
 
     let shopping_quantities = sqlx::query!(
         r#"
@@ -74,7 +74,7 @@ pub async fn delete_recipe(
         recipe_id,
         id,
     )
-    .fetch_all(pool)
+    .fetch_all(&pool)
     .await
     .map_err(|_| {
         (
@@ -89,7 +89,7 @@ pub async fn delete_recipe(
         r#"DELETE FROM shopping_quantity WHERE id = ANY($1)"#,
         sq_ids
     )
-    .execute(pool)
+    .execute(&pool)
     .await
     .map_err(|_| default_err.clone())?;
 
@@ -108,7 +108,7 @@ pub async fn delete_recipe(
         r#"DELETE FROM shopping_ingredient WHERE id = ANY($1)"#,
         si_ids
     )
-    .execute(pool)
+    .execute(&pool)
     .await
     .map_err(|_| default_err)?;
 

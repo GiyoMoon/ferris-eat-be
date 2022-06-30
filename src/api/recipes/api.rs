@@ -22,7 +22,7 @@ pub struct GetAllRes {
 #[axum_macros::debug_handler]
 pub async fn get_all(
     claims: Claims,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<Vec<GetAllRes>>), (StatusCode, String)> {
     let recipes = sqlx::query!(
         r#"
@@ -33,7 +33,7 @@ pub async fn get_all(
         "#,
         claims.get_sub()
     )
-    .fetch_all(pool)
+    .fetch_all(&pool)
     .await
     .map_err(|_| {
         (
@@ -75,7 +75,7 @@ pub struct IngredientWithQuantity {
 pub async fn create(
     claims: Claims,
     extract::Json(payload): extract::Json<CreateReq>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let insert_result = sqlx::query!(
         r#"
@@ -86,7 +86,7 @@ pub async fn create(
         payload.name,
         claims.get_sub()
     )
-    .fetch_one(pool)
+    .fetch_one(&pool)
     .await
     .map_err(|_| {
         (
@@ -99,7 +99,7 @@ pub async fn create(
         insert_result.id,
         claims.get_sub(),
         &payload.ingredients,
-        pool,
+        &pool,
     )
     .await?;
 
@@ -167,7 +167,7 @@ pub struct IngredientForRecipeQuery {
 pub async fn get(
     claims: Claims,
     Path(id): Path<i32>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<GetRes>), (StatusCode, String)> {
     let recipe: RecipeQuery = sqlx::query_as!(
         RecipeQuery,
@@ -178,7 +178,7 @@ pub async fn get(
         id,
         claims.get_sub()
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| {
         (
@@ -198,7 +198,7 @@ pub async fn get(
         "#,
         recipe.id
     )
-    .fetch_all(pool)
+    .fetch_all(&pool)
     .await
     .map_err(|_| {
         (
@@ -221,14 +221,14 @@ pub async fn update(
     claims: Claims,
     Path(id): Path<i32>,
     extract::Json(payload): extract::Json<UpdateReq>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query!(
         r#"SELECT id FROM recipe WHERE id = $1 AND user_id = $2"#,
         id,
         claims.get_sub()
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| {
         (
@@ -240,7 +240,7 @@ pub async fn update(
 
     if let Some(ref name) = payload.name {
         sqlx::query!(r#"UPDATE recipe SET name = $1 WHERE id = $2"#, name, id,)
-            .execute(pool)
+            .execute(&pool)
             .await
             .map_err(|_| {
                 (
@@ -253,7 +253,7 @@ pub async fn update(
     if let Some(ref ingredients) = payload.ingredients {
         {
             sqlx::query!(r#"DELETE FROM recipe_quantity WHERE recipe_id = $1"#, id)
-                .execute(pool)
+                .execute(&pool)
                 .await
                 .map_err(|_| {
                     (
@@ -262,7 +262,7 @@ pub async fn update(
                     )
                 })?;
 
-            save_recipe_ingredients(id, claims.get_sub(), ingredients, pool).await?;
+            save_recipe_ingredients(id, claims.get_sub(), ingredients, &pool).await?;
         }
     }
 
@@ -273,7 +273,7 @@ pub async fn update(
             PrimitiveDateTime::new(updated.date(), updated.time()),
             id,
         )
-        .execute(pool)
+        .execute(&pool)
         .await
         .map_err(|_| {
             (
@@ -290,7 +290,7 @@ pub async fn update(
 pub async fn delete(
     claims: Claims,
     Path(id): Path<i32>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query!(
         r#"
@@ -301,7 +301,7 @@ pub async fn delete(
         id,
         claims.get_sub()
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| {
         (

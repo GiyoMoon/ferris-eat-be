@@ -44,7 +44,7 @@ pub struct RegisterReq {
 #[axum_macros::debug_handler]
 pub async fn register(
     ValidatedJson(payload): ValidatedJson<RegisterReq>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
     let default_err = get_default_err("Failed creating user");
 
@@ -53,7 +53,7 @@ pub async fn register(
         payload.username.to_lowercase(),
         payload.email.to_lowercase()
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| default_err.clone())?;
 
@@ -87,7 +87,7 @@ pub async fn register(
         payload.email.to_lowercase(),
         hashed_password.get()
     )
-    .fetch_one(pool)
+    .fetch_one(&pool)
     .await
     .map_err(|_| default_err)?;
 
@@ -114,7 +114,7 @@ pub struct LoginReq {
 #[axum_macros::debug_handler]
 pub async fn login(
     extract::Json(payload): extract::Json<LoginReq>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
     let invalid_err = (
         StatusCode::UNAUTHORIZED,
@@ -125,7 +125,7 @@ pub async fn login(
         r#"SELECT * FROM "user" WHERE username = $1"#,
         payload.username.to_lowercase()
     )
-    .fetch_one(pool)
+    .fetch_one(&pool)
     .await
     .map_err(|_| invalid_err.clone())?;
 
@@ -170,9 +170,9 @@ impl From<UserModel> for MeRes {
 #[axum_macros::debug_handler]
 pub async fn me(
     claims: Claims,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<MeRes>), (StatusCode, String)> {
-    let user = get_user_by_uuid(claims.get_sub(), pool).await?;
+    let user = get_user_by_uuid(claims.get_sub(), &pool).await?;
 
     Ok((StatusCode::OK, Json(MeRes::from(user))))
 }
@@ -188,7 +188,7 @@ pub struct UpdateReq {
 pub async fn update(
     claims: Claims,
     ValidatedJson(payload): ValidatedJson<UpdateReq>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let default_err = get_default_err("Failed updating user");
 
@@ -197,7 +197,7 @@ pub async fn update(
         payload.email.to_lowercase(),
         claims.get_sub(),
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| default_err.clone())?;
 
@@ -214,7 +214,7 @@ pub async fn update(
         payload.email.to_lowercase(),
         claims.get_sub(),
     )
-    .execute(pool)
+    .execute(&pool)
     .await
     .map_err(|_| default_err)?;
 
@@ -235,9 +235,9 @@ pub struct ChangePasswordReq {
 pub async fn change_password(
     claims: Claims,
     ValidatedJson(payload): ValidatedJson<ChangePasswordReq>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<(StatusCode, Json<Tokens>), (StatusCode, String)> {
-    let user = get_user_by_uuid(claims.get_sub(), pool).await?;
+    let user = get_user_by_uuid(claims.get_sub(), &pool).await?;
 
     let valid_password = Password::from_hash(user.password.clone())
         .verify(payload.old_password)
@@ -254,7 +254,7 @@ pub async fn change_password(
         hashed_password.get(),
         claims.get_sub(),
     )
-    .execute(pool)
+    .execute(&pool)
     .await
     .map_err(|_| {
         (

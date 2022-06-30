@@ -19,11 +19,11 @@ pub async fn add_ingredient(
     claims: Claims,
     Path((id, ingredient_id)): Path<(i32, i32)>,
     ValidatedJson(payload): ValidatedJson<AddIngredientReq>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let default_err = get_default_err("Failed adding ingredient to shopping list");
 
-    validate_shopping_id(id, claims.get_sub(), default_err.clone(), pool).await?;
+    validate_shopping_id(id, claims.get_sub(), default_err.clone(), &pool).await?;
 
     add_shopping_quantity(
         ingredient_id,
@@ -32,7 +32,7 @@ pub async fn add_ingredient(
         id,
         None,
         default_err.clone(),
-        pool,
+        &pool,
     )
     .await?;
 
@@ -43,11 +43,11 @@ pub async fn add_ingredient(
 pub async fn check_ingredient(
     claims: Claims,
     Path((id, ingredient_id)): Path<(i32, i32)>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let default_err = get_default_err("Failed checking shopping ingredient");
 
-    validate_shopping_id(id, claims.get_sub(), default_err.clone(), pool).await?;
+    validate_shopping_id(id, claims.get_sub(), default_err.clone(), &pool).await?;
 
     sqlx::query!(
         r#"
@@ -59,7 +59,7 @@ pub async fn check_ingredient(
         ingredient_id,
         id,
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| default_err)?
     .ok_or((
@@ -74,11 +74,11 @@ pub async fn check_ingredient(
 pub async fn delete_ingredient(
     claims: Claims,
     Path((id, ingredient_id)): Path<(i32, i32)>,
-    Extension(ref pool): Extension<PgPool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let default_err = get_default_err("Failed deleting shopping ingredient");
 
-    validate_shopping_id(id, claims.get_sub(), default_err.clone(), pool).await?;
+    validate_shopping_id(id, claims.get_sub(), default_err.clone(), &pool).await?;
 
     let shopping_ingredient = sqlx::query!(
         r#"
@@ -89,7 +89,7 @@ pub async fn delete_ingredient(
         ingredient_id,
         id,
     )
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| default_err.clone())?
     .ok_or((
@@ -102,7 +102,7 @@ pub async fn delete_ingredient(
         r#"DELETE FROM shopping_ingredient WHERE id = $1"#,
         shopping_ingredient.id
     )
-    .execute(pool)
+    .execute(&pool)
     .await
     .map_err(|_| default_err)?;
 
